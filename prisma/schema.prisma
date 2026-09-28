@@ -35,8 +35,8 @@ enum AttendanceStatus {
 }
 
 enum RequestStatus {
-  PENDING           // waiting on class incharge
-  PENDING_HOD       // incharge approved, waiting on HOD
+  PENDING // waiting on class incharge
+  PENDING_HOD // incharge approved, waiting on HOD
   APPROVED
   REJECTED
 }
@@ -90,9 +90,12 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
+  accounts     Account[]
+  authSessions Session[]
+
   departmentId String?
-  department   Department?  @relation("DepartmentMembers", fields: [departmentId], references: [id])
-  hodOf        Department?  @relation("DepartmentHod")
+  department   Department? @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  hodOf        Department? @relation("DepartmentHod")
 
   classId String?
   class   Class?  @relation("ClassStudents", fields: [classId], references: [id])
@@ -127,13 +130,13 @@ model User {
 }
 
 model Department {
-  id     String  @id @default(cuid())
-  name   String  @unique
-  code   String  @unique
-  hodId  String? @unique
-  hod    User?   @relation("DepartmentHod", fields: [hodId], references: [id])
+  id    String  @id @default(cuid())
+  name  String  @unique
+  code  String  @unique
+  hodId String? @unique
+  hod   User?   @relation("DepartmentHod", fields: [hodId], references: [id])
 
-  members    User[]            @relation("DepartmentMembers")
+  members    User[]          @relation("DepartmentMembers")
   classes    Class[]
   subjects   Subject[]
   notices    Notice[]
@@ -145,13 +148,13 @@ model Department {
 // ─────────────────── Academic structure ──────────────────────
 
 model Class {
-  id           String @id @default(cuid())
+  id           String     @id @default(cuid())
   name         String
   semester     Int
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
   inchargeId   String?
-  incharge     User?   @relation("ClassIncharge", fields: [inchargeId], references: [id])
+  incharge     User?      @relation("ClassIncharge", fields: [inchargeId], references: [id])
 
   students User[]               @relation("ClassStudents")
   teaching TeachingAssignment[]
@@ -164,7 +167,7 @@ model Class {
 }
 
 model Subject {
-  id           String @id @default(cuid())
+  id           String     @id @default(cuid())
   code         String
   name         String
   semester     Int
@@ -181,9 +184,9 @@ model Subject {
 }
 
 model TeachingAssignment {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   facultyId String
-  faculty   User   @relation(fields: [facultyId], references: [id])
+  faculty   User    @relation(fields: [facultyId], references: [id])
   subjectId String
   subject   Subject @relation(fields: [subjectId], references: [id])
   classId   String
@@ -212,11 +215,11 @@ model AttendanceSession {
 }
 
 model AttendanceRecord {
-  id        String @id @default(cuid())
+  id        String            @id @default(cuid())
   sessionId String
   session   AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   studentId String
-  student   User   @relation(fields: [studentId], references: [id])
+  student   User              @relation(fields: [studentId], references: [id])
   status    AttendanceStatus
 
   @@unique([sessionId, studentId])
@@ -226,24 +229,24 @@ model AttendanceRecord {
 // ─────────────── 2. Leave requisition ────────────────────────
 
 model LeaveRequest {
-  id             String        @id @default(cuid())
-  studentId      String
-  student        User          @relation("LeaveStudent", fields: [studentId], references: [id])
-  classId        String
-  fromDate       DateTime
-  toDate         DateTime
-  body           String
-  status         RequestStatus @default(PENDING)
+  id        String        @id @default(cuid())
+  studentId String
+  student   User          @relation("LeaveStudent", fields: [studentId], references: [id])
+  classId   String
+  fromDate  DateTime
+  toDate    DateTime
+  body      String
+  status    RequestStatus @default(PENDING)
 
   inchargeId     String?
-  incharge       User?         @relation("LeaveIncharge", fields: [inchargeId], references: [id])
+  incharge       User?     @relation("LeaveIncharge", fields: [inchargeId], references: [id])
   inchargeAt     DateTime?
   inchargeRemark String?
 
-  hodId      String?
-  hod        User?     @relation("LeaveHod", fields: [hodId], references: [id])
-  hodAt      DateTime?
-  hodRemark  String?
+  hodId     String?
+  hod       User?     @relation("LeaveHod", fields: [hodId], references: [id])
+  hodAt     DateTime?
+  hodRemark String?
 
   createdAt DateTime @default(now())
 
@@ -253,39 +256,39 @@ model LeaveRequest {
 // ─────────────── 3. Materials / files ────────────────────────
 
 model Material {
-  id            String       @id @default(cuid())
-  subjectId     String
-  subject       Subject      @relation(fields: [subjectId], references: [id])
-  classId       String
-  uploadedById  String
-  uploadedBy    User         @relation(fields: [uploadedById], references: [id])
-  title         String
-  description   String?
-  type          MaterialType
-  fileKey       String
-  fileName      String
-  sizeBytes     Int
-  createdAt     DateTime     @default(now())
+  id           String       @id @default(cuid())
+  subjectId    String
+  subject      Subject      @relation(fields: [subjectId], references: [id])
+  classId      String
+  uploadedById String
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id])
+  title        String
+  description  String?
+  type         MaterialType
+  fileKey      String
+  fileName     String
+  sizeBytes    Int
+  createdAt    DateTime     @default(now())
 }
 
 // ─────────────── 4. Notice board ─────────────────────────────
 
 model Notice {
-  id            String       @id @default(cuid())
+  id            String      @id @default(cuid())
   authorId      String
-  author        User         @relation(fields: [authorId], references: [id])
+  author        User        @relation(fields: [authorId], references: [id])
   scope         NoticeScope
   departmentId  String?
-  department    Department?  @relation(fields: [departmentId], references: [id])
+  department    Department? @relation(fields: [departmentId], references: [id])
   classId       String?
-  class         Class?       @relation(fields: [classId], references: [id])
+  class         Class?      @relation(fields: [classId], references: [id])
   semester      Int?
   title         String
   body          String
   attachmentKey String?
-  important     Boolean      @default(false)
+  important     Boolean     @default(false)
   expiresAt     DateTime?
-  createdAt     DateTime     @default(now())
+  createdAt     DateTime    @default(now())
 
   @@index([departmentId, scope, createdAt])
 }
@@ -397,7 +400,7 @@ model ScheduleSlot {
 // ─────────────── 10. Exam results ────────────────────────────
 
 model Exam {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   name         String
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
@@ -465,4 +468,42 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([entity, entityId])
+}
+
+// ─────────────── Auth.js adapter tables ─────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
