@@ -1,3 +1,8 @@
+// ─────────────────────────────────────────────────────────────
+// EasyManage schema
+// Sections are numbered to match the spec doc.
+// ─────────────────────────────────────────────────────────────
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,14 +12,457 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────── Enums ───────────────────────────
+
+enum Role {
+  STUDENT
+  FACULTY
+  HOD
+  ADMIN
+}
+
+enum Permission {
+  GRIEVANCE
+  FEE
+  CALENDAR_EDIT
+  RESULTS_PUBLISH
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum RequestStatus {
+  PENDING           // waiting on class incharge
+  PENDING_HOD       // incharge approved, waiting on HOD
+  APPROVED
+  REJECTED
+}
+
+enum MaterialType {
+  NOTES
+  ASSIGNMENT
+  QUESTION_PAPER
+  LAB_MANUAL
+  OTHER
+}
+
+enum NoticeScope {
+  COLLEGE
+  DEPARTMENT
+  SEMESTER
+  CLASS
+}
+
+enum GrievanceStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum AppointmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SCHEDULED
+}
+
+enum EventScope {
+  COLLEGE
+  DEPARTMENT
+  SEMESTER
+  CLASS
+}
+
+// ─────────────────────────── Identity ────────────────────────
+
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  email        String   @unique
+  id           String       @id @default(cuid())
+  username     String       @unique
+  email        String       @unique
   passwordHash String?
   name         String
-  role         String   @default("STUDENT")
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         Role
+  active       Boolean      @default(true)
+  permissions  Permission[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  departmentId String?
+  department   Department?  @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  hodOf        Department?  @relation("DepartmentHod")
+
+  classId String?
+  class   Class?  @relation("ClassStudents", fields: [classId], references: [id])
+
+  inchargeOf Class[] @relation("ClassIncharge")
+
+  // Back-references (Prisma requires both sides to be declared)
+  teachingAssignments TeachingAssignment[]
+  attendanceTaken     AttendanceSession[]
+  attendanceRecords   AttendanceRecord[]
+  leaveRequestsSent   LeaveRequest[]       @relation("LeaveStudent")
+  leaveRequestsOKd    LeaveRequest[]       @relation("LeaveIncharge")
+  leaveRequestsFinal  LeaveRequest[]       @relation("LeaveHod")
+  materialsUploaded   Material[]
+  noticesAuthored     Notice[]
+  grievancesFiled     Grievance[]          @relation("GrievanceStudent")
+  grievancesAssigned  Grievance[]          @relation("GrievanceAssignee")
+  appointmentsAsked   AppointmentRequest[] @relation("ApptStudent")
+  appointmentsMet     AppointmentRequest[] @relation("ApptStaff")
+  eventsCreated       CalendarEvent[]
+  feeRecord           FeeRecord?
+  feeTransactions     FeeTransaction[]
+  scheduleTaught      ScheduleSlot[]       @relation("SlotFaculty")
+  scheduleEdited      ScheduleSlot[]       @relation("SlotEditor")
+  examMarksEntered    ExamMark[]           @relation("MarkEnteredBy")
+  examMarksReceived   ExamMark[]           @relation("MarkStudent")
+  markRevisions       MarkRevision[]
+  notifications       Notification[]
+  auditEntries        AuditLog[]
+
+  @@index([departmentId, role])
+}
+
+model Department {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  code   String  @unique
+  hodId  String? @unique
+  hod    User?   @relation("DepartmentHod", fields: [hodId], references: [id])
+
+  members    User[]            @relation("DepartmentMembers")
+  classes    Class[]
+  subjects   Subject[]
+  notices    Notice[]
+  events     CalendarEvent[]
+  exams      Exam[]
+  grievances Grievance[]
+}
+
+// ─────────────────── Academic structure ──────────────────────
+
+model Class {
+  id           String @id @default(cuid())
+  name         String
+  semester     Int
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  inchargeId   String?
+  incharge     User?   @relation("ClassIncharge", fields: [inchargeId], references: [id])
+
+  students User[]               @relation("ClassStudents")
+  teaching TeachingAssignment[]
+  sessions AttendanceSession[]
+  schedule ScheduleSlot[]
+  notices  Notice[]
+  events   CalendarEvent[]
+
+  @@unique([departmentId, name])
+}
+
+model Subject {
+  id           String @id @default(cuid())
+  code         String
+  name         String
+  semester     Int
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  offerings TeachingAssignment[]
+  sessions  AttendanceSession[]
+  materials Material[]
+  slots     ScheduleSlot[]
+  marks     ExamMark[]
+
+  @@unique([departmentId, code, semester])
+}
+
+model TeachingAssignment {
+  id        String @id @default(cuid())
+  facultyId String
+  faculty   User   @relation(fields: [facultyId], references: [id])
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  classId   String
+  class     Class   @relation(fields: [classId], references: [id])
+
+  @@unique([facultyId, subjectId, classId])
+}
+
+// ─────────────── 1. Attendance ───────────────────────────────
+
+model AttendanceSession {
+  id         String   @id @default(cuid())
+  classId    String
+  class      Class    @relation(fields: [classId], references: [id])
+  subjectId  String
+  subject    Subject  @relation(fields: [subjectId], references: [id])
+  date       DateTime
+  period     Int
+  markedById String
+  markedBy   User     @relation(fields: [markedById], references: [id])
+  createdAt  DateTime @default(now())
+
+  records AttendanceRecord[]
+
+  @@unique([classId, subjectId, date, period])
+}
+
+model AttendanceRecord {
+  id        String @id @default(cuid())
+  sessionId String
+  session   AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id])
+  status    AttendanceStatus
+
+  @@unique([sessionId, studentId])
+  @@index([studentId])
+}
+
+// ─────────────── 2. Leave requisition ────────────────────────
+
+model LeaveRequest {
+  id             String        @id @default(cuid())
+  studentId      String
+  student        User          @relation("LeaveStudent", fields: [studentId], references: [id])
+  classId        String
+  fromDate       DateTime
+  toDate         DateTime
+  body           String
+  status         RequestStatus @default(PENDING)
+
+  inchargeId     String?
+  incharge       User?         @relation("LeaveIncharge", fields: [inchargeId], references: [id])
+  inchargeAt     DateTime?
+  inchargeRemark String?
+
+  hodId      String?
+  hod        User?     @relation("LeaveHod", fields: [hodId], references: [id])
+  hodAt      DateTime?
+  hodRemark  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([status, classId])
+}
+
+// ─────────────── 3. Materials / files ────────────────────────
+
+model Material {
+  id            String       @id @default(cuid())
+  subjectId     String
+  subject       Subject      @relation(fields: [subjectId], references: [id])
+  classId       String
+  uploadedById  String
+  uploadedBy    User         @relation(fields: [uploadedById], references: [id])
+  title         String
+  description   String?
+  type          MaterialType
+  fileKey       String
+  fileName      String
+  sizeBytes     Int
+  createdAt     DateTime     @default(now())
+}
+
+// ─────────────── 4. Notice board ─────────────────────────────
+
+model Notice {
+  id            String       @id @default(cuid())
+  authorId      String
+  author        User         @relation(fields: [authorId], references: [id])
+  scope         NoticeScope
+  departmentId  String?
+  department    Department?  @relation(fields: [departmentId], references: [id])
+  classId       String?
+  class         Class?       @relation(fields: [classId], references: [id])
+  semester      Int?
+  title         String
+  body          String
+  attachmentKey String?
+  important     Boolean      @default(false)
+  expiresAt     DateTime?
+  createdAt     DateTime     @default(now())
+
+  @@index([departmentId, scope, createdAt])
+}
+
+// ─────────────── 5. Grievance ────────────────────────────────
+
+model Grievance {
+  id            String          @id @default(cuid())
+  studentId     String
+  student       User            @relation("GrievanceStudent", fields: [studentId], references: [id])
+  departmentId  String
+  department    Department      @relation(fields: [departmentId], references: [id])
+  type          String
+  details       String
+  attachmentKey String?
+  status        GrievanceStatus @default(PENDING)
+  assignedToId  String?
+  assignedTo    User?           @relation("GrievanceAssignee", fields: [assignedToId], references: [id])
+  response      String?
+  createdAt     DateTime        @default(now())
+  resolvedAt    DateTime?
+
+  @@index([departmentId, status])
+}
+
+// ─────────────── 6. Appointments ─────────────────────────────
+
+model AppointmentRequest {
+  id              String            @id @default(cuid())
+  studentId       String
+  student         User              @relation("ApptStudent", fields: [studentId], references: [id])
+  staffId         String
+  staff           User              @relation("ApptStaff", fields: [staffId], references: [id])
+  reason          String
+  preferredAt     DateTime?
+  status          AppointmentStatus @default(PENDING)
+  scheduledAt     DateTime?
+  location        String?
+  rejectionReason String?
+  createdAt       DateTime          @default(now())
+
+  @@index([staffId, status])
+}
+
+// ─────────────── 7. Academic calendar ────────────────────────
+
+model CalendarEvent {
+  id           String      @id @default(cuid())
+  title        String
+  details      String?
+  scope        EventScope
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  classId      String?
+  class        Class?      @relation(fields: [classId], references: [id])
+  semester     Int?
+  startAt      DateTime
+  endAt        DateTime?
+  createdById  String
+  createdBy    User        @relation(fields: [createdById], references: [id])
+
+  @@index([departmentId, startAt])
+}
+
+// ─────────────── 8. Fees ─────────────────────────────────────
+
+model FeeRecord {
+  id          String   @id @default(cuid())
+  studentId   String   @unique
+  student     User     @relation(fields: [studentId], references: [id])
+  totalAmount Decimal  @db.Decimal(10, 2)
+  dueDate     DateTime
+
+  transactions FeeTransaction[]
+}
+
+model FeeTransaction {
+  id           String    @id @default(cuid())
+  feeRecordId  String
+  feeRecord    FeeRecord @relation(fields: [feeRecordId], references: [id])
+  amount       Decimal   @db.Decimal(10, 2)
+  paidAt       DateTime  @default(now())
+  recordedById String
+  recordedBy   User      @relation(fields: [recordedById], references: [id])
+  note         String?
+}
+
+// ─────────────── 9. Weekly schedule ──────────────────────────
+
+model ScheduleSlot {
+  id          String   @id @default(cuid())
+  classId     String
+  class       Class    @relation(fields: [classId], references: [id])
+  dayOfWeek   Int
+  period      Int
+  subjectId   String
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  facultyId   String
+  faculty     User     @relation("SlotFaculty", fields: [facultyId], references: [id])
+  room        String?
+  updatedById String
+  updatedBy   User     @relation("SlotEditor", fields: [updatedById], references: [id])
+  updatedAt   DateTime @updatedAt
+
+  @@unique([classId, dayOfWeek, period])
+  @@index([facultyId, dayOfWeek, period])
+}
+
+// ─────────────── 10. Exam results ────────────────────────────
+
+model Exam {
+  id           String   @id @default(cuid())
+  name         String
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  semester     Int
+  publishedAt  DateTime?
+
+  marks ExamMark[]
+}
+
+model ExamMark {
+  id            String   @id @default(cuid())
+  examId        String
+  exam          Exam     @relation(fields: [examId], references: [id])
+  studentId     String
+  student       User     @relation("MarkStudent", fields: [studentId], references: [id])
+  subjectId     String
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  marksObtained Int?
+  maxMarks      Int
+  grade         String?
+  enteredById   String
+  enteredBy     User     @relation("MarkEnteredBy", fields: [enteredById], references: [id])
+  updatedAt     DateTime @updatedAt
+
+  revisions MarkRevision[]
+
+  @@unique([examId, studentId, subjectId])
+}
+
+model MarkRevision {
+  id          String   @id @default(cuid())
+  examMarkId  String
+  examMark    ExamMark @relation(fields: [examMarkId], references: [id])
+  oldMarks    Int?
+  newMarks    Int?
+  changedById String
+  changedBy   User     @relation(fields: [changedById], references: [id])
+  changedAt   DateTime @default(now())
+  reason      String?
+}
+
+// ─────────────── Cross-cutting ───────────────────────────────
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String
+  entity    String
+  entityId  String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
 }
