@@ -162,6 +162,7 @@ model Class {
   schedule ScheduleSlot[]
   notices  Notice[]
   events   CalendarEvent[]
+  leaveRequests LeaveRequest[]
 
   @@unique([departmentId, name])
 }
@@ -230,10 +231,11 @@ model AttendanceRecord {
 
 model LeaveRequest {
   id        String        @id @default(cuid())
-  studentId String
-  student   User          @relation("LeaveStudent", fields: [studentId], references: [id])
-  classId   String
-  fromDate  DateTime
+  studentId      String
+  student        User          @relation("LeaveStudent", fields: [studentId], references: [id])
+  classId        String
+  class          Class         @relation(fields: [classId], references: [id])
+  fromDate       DateTime
   toDate    DateTime
   body      String
   status    RequestStatus @default(PENDING)
