@@ -8,11 +8,42 @@ const hash = (plain: string) => bcrypt.hashSync(plain, 10);
 async function main() {
   console.log('Seeding...');
 
+  // ── Clear existing data ────────────────────────────────────
+  console.log('Clearing existing data...');
+  await prisma.attendanceRecord.deleteMany();
+  await prisma.attendanceSession.deleteMany();
+  await prisma.markRevision.deleteMany();
+  await prisma.examMark.deleteMany();
+  await prisma.exam.deleteMany();
+  await prisma.material.deleteMany();
+  await prisma.notice.deleteMany();
+  await prisma.grievance.deleteMany();
+  await prisma.appointmentRequest.deleteMany();
+  await prisma.calendarEvent.deleteMany();
+  await prisma.feeTransaction.deleteMany();
+  await prisma.feeRecord.deleteMany();
+  await prisma.scheduleSlot.deleteMany();
+  await prisma.leaveRequest.deleteMany();
+  await prisma.teachingAssignment.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.auditLog.deleteMany();
+
+  // Break circular refs before deleting users/classes/departments
+  await prisma.user.updateMany({ data: { departmentId: null, classId: null } });
+  await prisma.class.updateMany({ data: { inchargeId: null } });
+  await prisma.department.updateMany({ data: { hodId: null } });
+
+  await prisma.user.deleteMany();
+  await prisma.class.deleteMany();
+  await prisma.subject.deleteMany();
+  await prisma.department.deleteMany();
+  console.log('  ✓ Cleared');
+
   // ── Departments ────────────────────────────────────────────
   const cse = await prisma.department.create({
     data: { name: 'Computer Science', code: 'CSE' },
   });
-  const ece = await prisma.department.create({
+  await prisma.department.create({
     data: { name: 'Electronics', code: 'ECE' },
   });
   console.log('  ✓ Departments');
@@ -97,30 +128,40 @@ async function main() {
   });
   console.log('  ✓ Teaching assignments');
 
-  // ── Weekly schedule: Mon period 1 = DS, period 2 = DBMS ────
-  await prisma.scheduleSlot.createMany({
-    data: [
-      {
-        classId: cls.id,
-        dayOfWeek: 1,
-        period: 1,
-        subjectId: ds.id,
-        facultyId: faculty.id,
-        room: 'A-101',
-        updatedById: faculty.id,
-      },
-      {
-        classId: cls.id,
-        dayOfWeek: 1,
-        period: 2,
-        subjectId: dbms.id,
-        facultyId: faculty.id,
-        room: 'A-101',
-        updatedById: faculty.id,
-      },
-    ],
-  });
-  console.log('  ✓ Schedule');
+  // ── Weekly schedule: Mon–Fri, period 1 = DS, period 2 = DBMS
+  const slots: {
+    classId: string;
+    dayOfWeek: number;
+    period: number;
+    subjectId: string;
+    facultyId: string;
+    room: string;
+    updatedById: string;
+  }[] = [];
+
+  for (const dayOfWeek of [1, 2, 3, 4, 5]) {
+    slots.push({
+      classId: cls.id,
+      dayOfWeek,
+      period: 1,
+      subjectId: ds.id,
+      facultyId: faculty.id,
+      room: 'A-101',
+      updatedById: faculty.id,
+    });
+    slots.push({
+      classId: cls.id,
+      dayOfWeek,
+      period: 2,
+      subjectId: dbms.id,
+      facultyId: faculty.id,
+      room: 'A-101',
+      updatedById: faculty.id,
+    });
+  }
+
+  await prisma.scheduleSlot.createMany({ data: slots });
+  console.log('  ✓ Schedule (Mon–Fri)');
 
   // ── Fee record for the student, with one payment made ──────
   const fee = await prisma.feeRecord.create({
@@ -140,21 +181,67 @@ async function main() {
   });
   console.log('  ✓ Fee record + transaction');
 
-  // ── One leave request, sitting at HOD stage ────────────────
+  // ── Leave requests, one in each meaningful state ───────────
+  // 1. PENDING — awaiting class incharge
   await prisma.leaveRequest.create({
     data: {
       studentId: student.id,
       classId: cls.id,
-      fromDate: new Date('2026-10-05'),
-      toDate: new Date('2026-10-07'),
+      fromDate: new Date('2026-11-01'),
+      toDate: new Date('2026-11-03'),
+      body: "Attending a cousin's wedding.",
+      status: 'PENDING',
+    },
+  });
+
+  // 2. PENDING_HOD — incharge approved, awaiting HOD
+  await prisma.leaveRequest.create({
+    data: {
+      studentId: student.id,
+      classId: cls.id,
+      fromDate: new Date('2026-10-15'),
+      toDate: new Date('2026-10-17'),
       body: 'Family function out of town.',
       status: 'PENDING_HOD',
       inchargeId: faculty.id,
-      inchargeAt: new Date(),
+      inchargeAt: new Date('2026-10-08'),
       inchargeRemark: 'Approved. Please share notes with classmates.',
     },
   });
-  console.log('  ✓ Leave request');
+
+  // 3. APPROVED — fully approved by both
+  await prisma.leaveRequest.create({
+    data: {
+      studentId: student.id,
+      classId: cls.id,
+      fromDate: new Date('2026-09-10'),
+      toDate: new Date('2026-09-11'),
+      body: 'Medical appointment.',
+      status: 'APPROVED',
+      inchargeId: faculty.id,
+      inchargeAt: new Date('2026-09-05'),
+      inchargeRemark: 'Approved.',
+      hodId: hod.id,
+      hodAt: new Date('2026-09-06'),
+      hodRemark: 'Approved. Take rest.',
+    },
+  });
+
+  // 4. REJECTED — rejected by incharge
+  await prisma.leaveRequest.create({
+    data: {
+      studentId: student.id,
+      classId: cls.id,
+      fromDate: new Date('2026-08-20'),
+      toDate: new Date('2026-08-25'),
+      body: 'Trip with friends.',
+      status: 'REJECTED',
+      inchargeId: faculty.id,
+      inchargeAt: new Date('2026-08-15'),
+      inchargeRemark: 'Too many days during term time.',
+    },
+  });
+  console.log('  ✓ Leave requests (4)');
 
   // ── One notice from HOD to the whole department ────────────
   await prisma.notice.create({
@@ -168,6 +255,53 @@ async function main() {
     },
   });
   console.log('  ✓ Notice');
+
+  // ── Attendance history: 10 previous weekdays, two sessions each
+  const pattern: Array<'PRESENT' | 'ABSENT' | 'LATE'> = [
+    'PRESENT', 'PRESENT',
+    'PRESENT', 'ABSENT',
+    'PRESENT', 'PRESENT',
+    'LATE',    'PRESENT',
+    'PRESENT', 'PRESENT',
+    'ABSENT',  'PRESENT',
+    'PRESENT', 'PRESENT',
+    'PRESENT', 'ABSENT',
+    'PRESENT', 'PRESENT',
+    'PRESENT', 'PRESENT',
+  ];
+
+  const days: Date[] = [];
+  const cursor = new Date();
+  cursor.setDate(cursor.getDate() - 1);
+  while (days.length < 10) {
+    const dow = cursor.getDay();
+    if (dow !== 0 && dow !== 6) days.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  let idx = 0;
+  for (const day of days) {
+    for (const subject of [ds, dbms]) {
+      const session = await prisma.attendanceSession.create({
+        data: {
+          classId: cls.id,
+          subjectId: subject.id,
+          date: day,
+          period: subject.id === ds.id ? 1 : 2,
+          markedById: faculty.id,
+        },
+      });
+      await prisma.attendanceRecord.create({
+        data: {
+          sessionId: session.id,
+          studentId: student.id,
+          status: pattern[idx % pattern.length],
+        },
+      });
+      idx++;
+    }
+  }
+  console.log('  ✓ Attendance history (10 days)');
 
   console.log('\nDone.\n');
   console.log('Logins (all passwords are "password"):');
