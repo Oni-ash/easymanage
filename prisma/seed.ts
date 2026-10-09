@@ -28,7 +28,6 @@ async function main() {
   await prisma.notification.deleteMany();
   await prisma.auditLog.deleteMany();
 
-  // Break circular refs before deleting users/classes/departments
   await prisma.user.updateMany({ data: { departmentId: null, classId: null } });
   await prisma.class.updateMany({ data: { inchargeId: null } });
   await prisma.department.updateMany({ data: { hodId: null } });
@@ -182,7 +181,6 @@ async function main() {
   console.log('  ✓ Fee record + transaction');
 
   // ── Leave requests, one in each meaningful state ───────────
-  // 1. PENDING — awaiting class incharge
   await prisma.leaveRequest.create({
     data: {
       studentId: student.id,
@@ -194,7 +192,6 @@ async function main() {
     },
   });
 
-  // 2. PENDING_HOD — incharge approved, awaiting HOD
   await prisma.leaveRequest.create({
     data: {
       studentId: student.id,
@@ -209,7 +206,6 @@ async function main() {
     },
   });
 
-  // 3. APPROVED — fully approved by both
   await prisma.leaveRequest.create({
     data: {
       studentId: student.id,
@@ -227,7 +223,6 @@ async function main() {
     },
   });
 
-  // 4. REJECTED — rejected by incharge
   await prisma.leaveRequest.create({
     data: {
       studentId: student.id,
@@ -243,18 +238,52 @@ async function main() {
   });
   console.log('  ✓ Leave requests (4)');
 
-  // ── One notice from HOD to the whole department ────────────
-  await prisma.notice.create({
-    data: {
-      authorId: hod.id,
-      scope: 'DEPARTMENT',
-      departmentId: cse.id,
-      title: 'Mid-semester exams begin Oct 20',
-      body: 'The detailed timetable will be posted by the end of this week. Attendance is mandatory.',
-      important: true,
-    },
+  // ── Notices at every scope level ───────────────────────────
+  await prisma.notice.createMany({
+    data: [
+      {
+        authorId: hod.id,
+        scope: 'COLLEGE',
+        title: 'Annual sports day — Nov 15',
+        body: 'The college annual sports day will be held on November 15. All students are encouraged to participate. Registration opens next week at the sports office.',
+        important: true,
+      },
+      {
+        authorId: hod.id,
+        scope: 'DEPARTMENT',
+        departmentId: cse.id,
+        title: 'Mid-semester exams begin Oct 20',
+        body: 'The detailed timetable will be posted by the end of this week. Attendance is mandatory.',
+        important: true,
+      },
+      {
+        authorId: hod.id,
+        scope: 'SEMESTER',
+        departmentId: cse.id,
+        semester: 5,
+        title: 'Semester 5 lab slots reshuffled',
+        body: 'Due to the new timetable, Wednesday and Friday lab slots have been swapped starting next week.',
+      },
+      {
+        authorId: faculty.id,
+        scope: 'CLASS',
+        departmentId: cse.id,
+        classId: cls.id,
+        title: 'DBMS assignment due Oct 25',
+        body: 'Submit your normalization exercise as a PDF to the portal before 5 PM on Oct 25. Late submissions lose 20% of the marks.',
+        important: true,
+      },
+      {
+        authorId: faculty.id,
+        scope: 'CLASS',
+        departmentId: cse.id,
+        classId: cls.id,
+        title: 'Data Structures extra class',
+        body: 'I will hold an extra session on Saturday morning at 9 AM to cover the graphs topic. Attendance is optional but recommended.',
+      },
+    ],
   });
-  console.log('  ✓ Notice');
+  console.log('  ✓ Notices (5)');
 
   // ── Attendance history: 10 previous weekdays, two sessions each
   const pattern: Array<'PRESENT' | 'ABSENT' | 'LATE'> = [

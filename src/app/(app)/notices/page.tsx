@@ -1,5 +1,9 @@
-import Placeholder from '@/components/placeholder';
+import { getPrincipal } from '@/lib/principal';
+import NoticesList from './notices-list';
 
-export default function Page() {
-  return <Placeholder title="Notice board" />;
+export default async function NoticesPage() {
+  const principal = await getPrincipal();
+  if (!principal) return null;
+
+  return <NoticesList principal={principal} />;
 }
