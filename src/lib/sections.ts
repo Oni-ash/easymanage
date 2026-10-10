@@ -1,3 +1,4 @@
+
 import type { Principal } from './principal';
 
 export type SectionKey =
@@ -19,26 +20,85 @@ export type Section = {
   visible: (p: Principal) => boolean;
 };
 
-const everyone = () => true;
-
-const hasPermission = (perm: string) => (p: Principal) =>
-  (p.permissions as string[]).includes(perm);
+const isStudent = (p: Principal) => p.role === 'STUDENT';
+const isFaculty = (p: Principal) => p.role === 'FACULTY';
+const isHod = (p: Principal) => p.role === 'HOD';
+const isAdmin = (p: Principal) => p.role === 'ADMIN';
 
 const studentOrStaffWithPermission = (perm: string) => (p: Principal) =>
-  p.role === 'STUDENT' ||
-  p.role === 'HOD' ||
-  p.role === 'ADMIN' ||
-  hasPermission(perm)(p);
+  isStudent(p) ||
+  isHod(p) ||
+  isAdmin(p) ||
+  (p.permissions as string[]).includes(perm);
 
 export const SECTIONS: Section[] = [
-  { key: 'attendance',   label: 'Attendance',   href: '/attendance',   visible: everyone },
-  { key: 'schedule',     label: 'Schedule',     href: '/schedule',     visible: everyone },
-  { key: 'leave',        label: 'Leave',        href: '/leave',        visible: everyone },
-  { key: 'materials',    label: 'Materials',    href: '/materials',    visible: everyone },
-  { key: 'notices',      label: 'Notices',      href: '/notices',      visible: everyone },
-  { key: 'calendar',     label: 'Calendar',     href: '/calendar',     visible: everyone },
-  { key: 'results',      label: 'Results',      href: '/results',      visible: everyone },
-  { key: 'appointments', label: 'Appointments', href: '/appointments', visible: everyone },
-  { key: 'grievance',    label: 'Grievance',    href: '/grievance',    visible: studentOrStaffWithPermission('GRIEVANCE') },
-  { key: 'fees',         label: 'Fees',         href: '/fees',         visible: studentOrStaffWithPermission('FEE') },
+  {
+    key: 'attendance',
+    label: 'Attendance',
+    href: '/attendance',
+    visible: (p) =>
+      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+  },
+  {
+    key: 'schedule',
+    label: 'Schedule',
+    href: '/schedule',
+    visible: (p) =>
+      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+  },
+  {
+    key: 'leave',
+    label: 'Leave',
+    href: '/leave',
+    visible: (p) =>
+      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+  },
+  {
+    key: 'materials',
+    label: 'Materials',
+    href: '/materials',
+    visible: (p) =>
+      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+  },
+  {
+    key: 'notices',
+    label: 'Notices',
+    href: '/notices',
+    visible: (p) =>
+      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+  },
+  {
+    key: 'calendar',
+    label: 'Calendar',
+    href: '/calendar',
+    visible: (p) =>
+      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+  },
+  {
+    key: 'results',
+    label: 'Results',
+    href: '/results',
+    visible: (p) =>
+      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+  },
+  {
+    key: 'appointments',
+    label: 'Appointments',
+    href: '/appointments',
+    visible: (p) =>
+      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+  },
+  {
+    key: 'grievance',
+    label: 'Grievance',
+    href: '/grievance',
+    visible: studentOrStaffWithPermission('GRIEVANCE'),
+  },
+  {
+    key: 'fees',
+    label: 'Fees',
+    href: '/fees',
+    visible: (p) =>
+      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+  },
 ];
