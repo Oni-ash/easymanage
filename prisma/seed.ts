@@ -1,12 +1,16 @@
 import { PrismaClient, Role, Permission } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
 
 const prisma = new PrismaClient();
 
 const hash = (plain: string) => bcrypt.hashSync(plain, 10);
+const UPLOADS_DIR = join(process.cwd(), 'uploads');
 
 async function main() {
   console.log('Seeding...');
+  mkdirSync(UPLOADS_DIR, { recursive: true });
 
   // ── Clear existing data ────────────────────────────────────
   console.log('Clearing existing data...');
@@ -47,7 +51,7 @@ async function main() {
   });
   console.log('  ✓ Departments');
 
-  // ── HOD for CSE ────────────────────────────────────────────
+  // ── HOD ────────────────────────────────────────────────────
   const hod = await prisma.user.create({
     data: {
       username: 'hod.cse',
@@ -70,7 +74,7 @@ async function main() {
   });
   console.log('  ✓ HOD');
 
-  // ── Faculty (class incharge of CSE-3A, has grievance access) ─
+  // ── Faculty ────────────────────────────────────────────────
   const faculty = await prisma.user.create({
     data: {
       username: 'faculty.cse',
@@ -84,7 +88,7 @@ async function main() {
   });
   console.log('  ✓ Faculty');
 
-  // ── Class CSE-3A, assigned to faculty as incharge ──────────
+  // ── Class ──────────────────────────────────────────────────
   const cls = await prisma.class.create({
     data: {
       name: 'CSE-3A',
@@ -95,7 +99,7 @@ async function main() {
   });
   console.log('  ✓ Class');
 
-  // ── Student in CSE-3A ──────────────────────────────────────
+  // ── Student ────────────────────────────────────────────────
   const student = await prisma.user.create({
     data: {
       username: 'student.cse',
@@ -109,7 +113,7 @@ async function main() {
   });
   console.log('  ✓ Student');
 
-  // ── Subjects (semester 5) ──────────────────────────────────
+  // ── Subjects ───────────────────────────────────────────────
   const ds = await prisma.subject.create({
     data: { code: 'CS501', name: 'Data Structures', semester: 5, departmentId: cse.id },
   });
@@ -118,7 +122,7 @@ async function main() {
   });
   console.log('  ✓ Subjects');
 
-  // ── Faculty teaches both subjects to CSE-3A ────────────────
+  // ── Teaching assignments ───────────────────────────────────
   await prisma.teachingAssignment.createMany({
     data: [
       { facultyId: faculty.id, subjectId: ds.id, classId: cls.id },
@@ -127,7 +131,7 @@ async function main() {
   });
   console.log('  ✓ Teaching assignments');
 
-  // ── Weekly schedule: Mon–Fri, period 1 = DS, period 2 = DBMS
+  // ── Weekly schedule ────────────────────────────────────────
   const slots: {
     classId: string;
     dayOfWeek: number;
@@ -158,11 +162,10 @@ async function main() {
       updatedById: faculty.id,
     });
   }
-
   await prisma.scheduleSlot.createMany({ data: slots });
   console.log('  ✓ Schedule (Mon–Fri)');
 
-  // ── Fee record for the student, with one payment made ──────
+  // ── Fee record ─────────────────────────────────────────────
   const fee = await prisma.feeRecord.create({
     data: {
       studentId: student.id,
@@ -180,7 +183,7 @@ async function main() {
   });
   console.log('  ✓ Fee record + transaction');
 
-  // ── Leave requests, one in each meaningful state ───────────
+  // ── Leave requests ─────────────────────────────────────────
   await prisma.leaveRequest.create({
     data: {
       studentId: student.id,
@@ -191,7 +194,6 @@ async function main() {
       status: 'PENDING',
     },
   });
-
   await prisma.leaveRequest.create({
     data: {
       studentId: student.id,
@@ -205,7 +207,6 @@ async function main() {
       inchargeRemark: 'Approved. Please share notes with classmates.',
     },
   });
-
   await prisma.leaveRequest.create({
     data: {
       studentId: student.id,
@@ -222,7 +223,6 @@ async function main() {
       hodRemark: 'Approved. Take rest.',
     },
   });
-
   await prisma.leaveRequest.create({
     data: {
       studentId: student.id,
@@ -238,7 +238,7 @@ async function main() {
   });
   console.log('  ✓ Leave requests (4)');
 
-  // ── Notices at every scope level ───────────────────────────
+  // ── Notices ────────────────────────────────────────────────
   await prisma.notice.createMany({
     data: [
       {
@@ -285,20 +285,71 @@ async function main() {
   });
   console.log('  ✓ Notices (5)');
 
-  // ── Attendance history: 10 previous weekdays, two sessions each
-  const pattern: Array<'PRESENT' | 'ABSENT' | 'LATE'> = [
-    'PRESENT', 'PRESENT',
-    'PRESENT', 'ABSENT',
-    'PRESENT', 'PRESENT',
-    'LATE',    'PRESENT',
-    'PRESENT', 'PRESENT',
-    'ABSENT',  'PRESENT',
-    'PRESENT', 'PRESENT',
-    'PRESENT', 'ABSENT',
-    'PRESENT', 'PRESENT',
-    'PRESENT', 'PRESENT',
+  // ── Materials + placeholder files ──────────────────────────
+  const seedMaterials = [
+    {
+      key: 'seed-ds-lecture-notes',
+      fileName: 'DS-Lecture-Notes-Week1.txt',
+      subjectId: ds.id,
+      title: 'Data Structures — Week 1 lecture notes',
+      description: 'Introduction to arrays, linked lists, and time complexity.',
+      type: 'NOTES' as const,
+      content: 'Data Structures Week 1 — placeholder file.\nTopics: arrays, linked lists, big-O notation.\n',
+    },
+    {
+      key: 'seed-ds-lab-manual',
+      fileName: 'DS-Lab-Manual.txt',
+      subjectId: ds.id,
+      title: 'Data Structures lab manual',
+      description: 'Lab exercises for the full semester.',
+      type: 'LAB_MANUAL' as const,
+      content: 'Lab manual placeholder.\nTen exercises covering stacks, queues, trees, graphs.\n',
+    },
+    {
+      key: 'seed-dbms-normalization',
+      fileName: 'DBMS-Normalization-Notes.txt',
+      subjectId: dbms.id,
+      title: 'DBMS — Normalization notes',
+      description: 'Covers 1NF through BCNF with examples.',
+      type: 'NOTES' as const,
+      content: 'Normalization notes placeholder.\n1NF, 2NF, 3NF, BCNF explained with examples.\n',
+    },
+    {
+      key: 'seed-dbms-question-paper',
+      fileName: 'DBMS-Midterm-2025.txt',
+      subjectId: dbms.id,
+      title: 'DBMS — Previous midterm paper',
+      description: 'From last year, for practice.',
+      type: 'QUESTION_PAPER' as const,
+      content: 'Question paper placeholder.\nSection A: short answers. Section B: SQL queries.\n',
+    },
   ];
 
+  for (const m of seedMaterials) {
+    writeFileSync(join(UPLOADS_DIR, m.key), m.content);
+    await prisma.material.create({
+      data: {
+        subjectId: m.subjectId,
+        classId: cls.id,
+        uploadedById: faculty.id,
+        title: m.title,
+        description: m.description,
+        type: m.type,
+        fileKey: m.key,
+        fileName: m.fileName,
+        sizeBytes: Buffer.byteLength(m.content, 'utf8'),
+      },
+    });
+  }
+  console.log(`  ✓ Materials (${seedMaterials.length}) + placeholder files on disk`);
+
+  // ── Attendance history ─────────────────────────────────────
+  const pattern: Array<'PRESENT' | 'ABSENT' | 'LATE'> = [
+    'PRESENT', 'PRESENT', 'PRESENT', 'ABSENT', 'PRESENT',
+    'PRESENT', 'LATE',    'PRESENT', 'PRESENT', 'PRESENT',
+    'ABSENT',  'PRESENT', 'PRESENT', 'PRESENT', 'PRESENT',
+    'ABSENT',  'PRESENT', 'PRESENT', 'PRESENT', 'PRESENT',
+  ];
   const days: Date[] = [];
   const cursor = new Date();
   cursor.setDate(cursor.getDate() - 1);

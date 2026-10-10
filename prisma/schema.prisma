@@ -163,6 +163,7 @@ model Class {
   notices  Notice[]
   events   CalendarEvent[]
   leaveRequests LeaveRequest[]
+  materials Material[]
 
   @@unique([departmentId, name])
 }
@@ -261,8 +262,9 @@ model Material {
   id           String       @id @default(cuid())
   subjectId    String
   subject      Subject      @relation(fields: [subjectId], references: [id])
-  classId      String
-  uploadedById String
+  classId       String
+  class         Class        @relation(fields: [classId], references: [id])
+  uploadedById  String
   uploadedBy   User         @relation(fields: [uploadedById], references: [id])
   title        String
   description  String?
