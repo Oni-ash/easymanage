@@ -355,6 +355,65 @@ async function main() {
     ],
   });
   console.log('  ✓ Notices (5)');
+    // ── Calendar events ────────────────────────────────────────
+  await prisma.calendarEvent.createMany({
+    data: [
+      {
+        title: 'Annual Sports Day',
+        details: 'Full-day inter-department sports meet at the college grounds. All students are encouraged to participate.',
+        scope: 'COLLEGE',
+        startAt: new Date('2026-11-15T09:00:00Z'),
+        endAt: new Date('2026-11-15T17:00:00Z'),
+        createdById: hod.id,
+      },
+      {
+        title: 'Mid-semester exams begin',
+        details: 'Exams run from Oct 20 to Oct 30. Detailed timetable will be posted on the notice board.',
+        scope: 'DEPARTMENT',
+        departmentId: cse.id,
+        startAt: new Date('2026-10-20T09:00:00Z'),
+        createdById: hod.id,
+      },
+      {
+        title: 'Semester 5 lab exam week',
+        details: 'Lab exams for all semester 5 subjects.',
+        scope: 'SEMESTER',
+        departmentId: cse.id,
+        semester: 5,
+        startAt: new Date('2026-11-10T09:00:00Z'),
+        endAt: new Date('2026-11-14T17:00:00Z'),
+        createdById: hod.id,
+      },
+      {
+        title: 'DBMS practical submission',
+        details: 'Submit your DBMS practical file to Prof. Iyer before 5 PM.',
+        scope: 'CLASS',
+        departmentId: cse.id,
+        classId: cls.id,
+        startAt: new Date('2026-10-25T17:00:00Z'),
+        createdById: faculty.id,
+      },
+      {
+        title: 'DS viva',
+        details: 'Viva for Data Structures. Check the notice board for the slot schedule.',
+        scope: 'CLASS',
+        departmentId: cse.id,
+        classId: cls2.id,
+        startAt: new Date('2026-10-28T09:00:00Z'),
+        createdById: faculty2.id,
+      },
+      {
+        title: 'Industrial visit',
+        details: 'One-day visit to TechPark. Registration fee ₹500. Sign up at the department office by Nov 10.',
+        scope: 'DEPARTMENT',
+        departmentId: cse.id,
+        startAt: new Date('2026-11-20T08:00:00Z'),
+        endAt: new Date('2026-11-20T18:00:00Z'),
+        createdById: hod.id,
+      },
+    ],
+  });
+  console.log('  ✓ Calendar events (6)');
 
   // ── Materials + placeholder files ──────────────────────────
   const seedMaterials = [
