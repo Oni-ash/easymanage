@@ -74,7 +74,7 @@ async function main() {
   });
   console.log('  ✓ HOD');
 
-    // ── Accounts user (fee section) ────────────────────────────
+  // ── Accounts user (college-wide, no department) ────────────
   await prisma.user.create({
     data: {
       username: 'accounts',
@@ -98,9 +98,22 @@ async function main() {
       permissions: [Permission.GRIEVANCE],
     },
   });
-  console.log('  ✓ Faculty');
+  console.log('  ✓ Faculty (Iyer)');
 
-  // ── Class ──────────────────────────────────────────────────
+  // ── Second faculty ─────────────────────────────────────────
+  const faculty2 = await prisma.user.create({
+    data: {
+      username: 'faculty2.cse',
+      email: 'faculty2.cse@college.edu',
+      name: 'Prof. Kumar',
+      role: Role.FACULTY,
+      passwordHash: hash('password'),
+      departmentId: cse.id,
+    },
+  });
+  console.log('  ✓ Faculty (Kumar)');
+
+  // ── Class CSE-3A ───────────────────────────────────────────
   const cls = await prisma.class.create({
     data: {
       name: 'CSE-3A',
@@ -109,9 +122,19 @@ async function main() {
       inchargeId: faculty.id,
     },
   });
-  console.log('  ✓ Class');
 
-  // ── Student ────────────────────────────────────────────────
+  // ── Class CSE-3B ───────────────────────────────────────────
+  const cls2 = await prisma.class.create({
+    data: {
+      name: 'CSE-3B',
+      semester: 5,
+      departmentId: cse.id,
+      inchargeId: faculty2.id,
+    },
+  });
+  console.log('  ✓ Classes (CSE-3A, CSE-3B)');
+
+  // ── Students ───────────────────────────────────────────────
   const student = await prisma.user.create({
     data: {
       username: 'student.cse',
@@ -123,7 +146,19 @@ async function main() {
       classId: cls.id,
     },
   });
-  console.log('  ✓ Student');
+
+  await prisma.user.create({
+    data: {
+      username: 'student2.cse',
+      email: 'student2.cse@college.edu',
+      name: 'Rahul M',
+      role: Role.STUDENT,
+      passwordHash: hash('password'),
+      departmentId: cse.id,
+      classId: cls2.id,
+    },
+  });
+  console.log('  ✓ Students (Asha, Rahul)');
 
   // ── Subjects ───────────────────────────────────────────────
   const ds = await prisma.subject.create({
@@ -139,11 +174,13 @@ async function main() {
     data: [
       { facultyId: faculty.id, subjectId: ds.id, classId: cls.id },
       { facultyId: faculty.id, subjectId: dbms.id, classId: cls.id },
+      { facultyId: faculty2.id, subjectId: ds.id, classId: cls2.id },
+      { facultyId: faculty2.id, subjectId: dbms.id, classId: cls2.id },
     ],
   });
   console.log('  ✓ Teaching assignments');
 
-  // ── Weekly schedule ────────────────────────────────────────
+  // ── Weekly schedule (Mon–Fri, P1 = DS, P2 = DBMS) ──────────
   const slots: {
     classId: string;
     dayOfWeek: number;
@@ -155,6 +192,7 @@ async function main() {
   }[] = [];
 
   for (const dayOfWeek of [1, 2, 3, 4, 5]) {
+    // CSE-3A, Iyer, P1 = DS, P2 = DBMS
     slots.push({
       classId: cls.id,
       dayOfWeek,
@@ -173,9 +211,30 @@ async function main() {
       room: 'A-101',
       updatedById: faculty.id,
     });
+
+    // CSE-3B, Kumar, P1 = DS, P2 = DBMS
+    slots.push({
+      classId: cls2.id,
+      dayOfWeek,
+      period: 1,
+      subjectId: ds.id,
+      facultyId: faculty2.id,
+      room: 'A-102',
+      updatedById: faculty2.id,
+    });
+    slots.push({
+      classId: cls2.id,
+      dayOfWeek,
+      period: 2,
+      subjectId: dbms.id,
+      facultyId: faculty2.id,
+      room: 'A-102',
+      updatedById: faculty2.id,
+    });
   }
+
   await prisma.scheduleSlot.createMany({ data: slots });
-  console.log('  ✓ Schedule (Mon–Fri)');
+  console.log('  ✓ Schedule (Mon–Fri, 20 slots)');
 
   // ── Fee record ─────────────────────────────────────────────
   const fee = await prisma.feeRecord.create({
@@ -355,7 +414,7 @@ async function main() {
   }
   console.log(`  ✓ Materials (${seedMaterials.length}) + placeholder files on disk`);
 
-  // ── Attendance history ─────────────────────────────────────
+  // ── Attendance history (10 weekdays, 2 sessions each) ──────
   const pattern: Array<'PRESENT' | 'ABSENT' | 'LATE'> = [
     'PRESENT', 'PRESENT', 'PRESENT', 'ABSENT', 'PRESENT',
     'PRESENT', 'LATE',    'PRESENT', 'PRESENT', 'PRESENT',
@@ -397,10 +456,12 @@ async function main() {
 
   console.log('\nDone.\n');
   console.log('Logins (all passwords are "password"):');
-  console.log('  hod.cse       → HOD, CSE');
-  console.log('  faculty.cse   → Faculty, class incharge of CSE-3A');
-  console.log('  student.cse   → Student, CSE-3A');
-  console.log('  accounts.cse  → Accounts, CSE');
+  console.log('  hod.cse        → HOD, CSE');
+  console.log('  faculty.cse    → Faculty, incharge of CSE-3A');
+  console.log('  faculty2.cse   → Faculty, incharge of CSE-3B');
+  console.log('  student.cse    → Student, CSE-3A');
+  console.log('  student2.cse   → Student, CSE-3B');
+  console.log('  accounts       → Accounts, college-wide');
 }
 
 main()

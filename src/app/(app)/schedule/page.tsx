@@ -1,5 +1,13 @@
-import Placeholder from '@/components/placeholder';
+import { getPrincipal } from '@/lib/principal';
+import StudentSchedule from './student-view';
+import FacultySchedule from './faculty-view';
+import HodSchedule from './hod-view';
 
-export default function Page() {
-  return <Placeholder title="Weekly schedule" />;
+export default async function SchedulePage() {
+  const principal = await getPrincipal();
+  if (!principal) return null;
+
+  if (principal.role === 'STUDENT') return <StudentSchedule principal={principal} />;
+  if (principal.role === 'HOD' || principal.role === 'ADMIN') return <HodSchedule principal={principal} />;
+  return <FacultySchedule principal={principal} />;
 }
