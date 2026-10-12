@@ -370,14 +370,16 @@ model FeeRecord {
 }
 
 model FeeTransaction {
-  id           String    @id @default(cuid())
-  feeRecordId  String
-  feeRecord    FeeRecord @relation(fields: [feeRecordId], references: [id])
-  amount       Decimal   @db.Decimal(10, 2)
-  paidAt       DateTime  @default(now())
-  recordedById String
-  recordedBy   User      @relation(fields: [recordedById], references: [id])
-  note         String?
+  id            String    @id @default(cuid())
+  feeRecordId   String
+  feeRecord     FeeRecord @relation(fields: [feeRecordId], references: [id])
+  amount        Decimal   @db.Decimal(10, 2)
+  paidAt        DateTime  @default(now())
+  recordedById  String
+  recordedBy    User      @relation(fields: [recordedById], references: [id])
+  note          String?
+  receiptNumber String?   @unique
+  utr           String?
 }
 
 // ─────────────── 9. Weekly schedule ──────────────────────────
