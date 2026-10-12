@@ -24,6 +24,7 @@ const isStudent = (p: Principal) => p.role === 'STUDENT';
 const isFaculty = (p: Principal) => p.role === 'FACULTY';
 const isHod = (p: Principal) => p.role === 'HOD';
 const isAdmin = (p: Principal) => p.role === 'ADMIN';
+const isAccounts = (p: Principal) => p.role === 'ACCOUNTS';
 
 const studentOrStaffWithPermission = (perm: string) => (p: Principal) =>
   isStudent(p) ||
@@ -99,6 +100,10 @@ export const SECTIONS: Section[] = [
     label: 'Fees',
     href: '/fees',
     visible: (p) =>
-      isStudent(p) || isFaculty(p) || isHod(p) || isAdmin(p),
+      isStudent(p) ||
+      isHod(p) ||
+      isAdmin(p) ||
+      isAccounts(p) ||
+      (isFaculty(p) && (p.permissions as string[]).includes('FEE')),
   },
 ];

@@ -42,6 +42,7 @@ type FeeResponse = {
   fee?: FeeRecord | null;
   students?: Student[];
   canRecordPayments?: boolean;
+  role?: 'STUDENT' | 'FACULTY' | 'HOD' | 'ACCOUNTS' | 'ADMIN';
   error?: string;
 };
 
@@ -278,14 +279,14 @@ export default function FeesPage() {
     );
   }
 
-  const isStudent =
-    data !== null &&
-    Object.prototype.hasOwnProperty.call(data, 'fee');
+  const role = data?.role ?? null;
+  const isStudent = role === 'STUDENT';
+  const isFaculty = role === 'FACULTY';
+  const isHod = role === 'HOD';
 
   const fee = data?.fee;
   const students = data?.students ?? [];
   const canRecordPayments = data?.canRecordPayments ?? false;
-  const isFaculty = !isStudent && !canRecordPayments;
 
   const studentsWithPendingFees = students.filter(
     (student) =>
@@ -383,11 +384,19 @@ export default function FeesPage() {
           <>
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                {isFaculty ? 'Class Fee Overview' : 'Department Fee Overview'}
+                {isFaculty
+                  ? 'Class Fee Overview'
+                  : isHod
+                    ? 'Department Fee Overview'
+                    : 'All Students'}
               </Typography>
 
               <Typography color="text.secondary">
-                {isFaculty ? 'Students in your assigned class:' : 'Students:'}{' '}
+                {isFaculty
+                  ? 'Students in your assigned class:'
+                  : isHod
+                    ? 'Students in your department:'
+                    : 'Students:'}{' '}
                 {students.length}
               </Typography>
 
@@ -476,8 +485,10 @@ export default function FeesPage() {
             {students.length === 0 ? (
               <Alert severity="info">
                 {isFaculty
-                  ? 'No students found in your assigned class. Add or assign students to your class first.'
-                  : 'No students found in your department.'}
+                  ? 'No students found in your assigned class.'
+                  : isHod
+                    ? 'No students found in your department.'
+                    : 'No students found.'}
               </Alert>
             ) : (
               students.map((student) => (

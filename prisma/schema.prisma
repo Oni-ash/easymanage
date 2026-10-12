@@ -18,6 +18,7 @@ enum Role {
   STUDENT
   FACULTY
   HOD
+  ACCOUNTS
   ADMIN
 }
 

@@ -74,6 +74,18 @@ async function main() {
   });
   console.log('  ✓ HOD');
 
+    // ── Accounts user (fee section) ────────────────────────────
+  await prisma.user.create({
+    data: {
+      username: 'accounts',
+      email: 'accounts@college.edu',
+      name: 'Meena S',
+      role: Role.ACCOUNTS,
+      passwordHash: hash('password'),
+    },
+  });
+  console.log('  ✓ Accounts');
+
   // ── Faculty ────────────────────────────────────────────────
   const faculty = await prisma.user.create({
     data: {
@@ -388,6 +400,7 @@ async function main() {
   console.log('  hod.cse       → HOD, CSE');
   console.log('  faculty.cse   → Faculty, class incharge of CSE-3A');
   console.log('  student.cse   → Student, CSE-3A');
+  console.log('  accounts.cse  → Accounts, CSE');
 }
 
 main()
