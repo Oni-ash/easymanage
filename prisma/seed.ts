@@ -308,6 +308,51 @@ async function main() {
     },
   });
   console.log('  ✓ Leave requests (4)');
+    // ── Grievances ─────────────────────────────────────────────
+  await prisma.grievance.create({
+    data: {
+      studentId: student.id,
+      departmentId: cse.id,
+      type: 'Academic',
+      details: 'The projector in A-101 has been broken for two weeks. It makes it difficult to follow some lectures.',
+      status: 'PENDING',
+    },
+  });
+
+  await prisma.grievance.create({
+    data: {
+      studentId: student.id,
+      departmentId: cse.id,
+      type: 'Facility',
+      details: 'Requesting an extra charging point in the CSE lab. Only two sockets work at the back row.',
+      status: 'IN_PROGRESS',
+      assignedToId: faculty.id,
+    },
+  });
+
+  await prisma.grievance.create({
+    data: {
+      studentId: student.id,
+      departmentId: cse.id,
+      type: 'Academic',
+      details: 'The DBMS reference book in the library is missing two chapters.',
+      status: 'RESOLVED',
+      assignedToId: faculty.id,
+      response: 'A replacement copy has been ordered and should arrive next week. Marking this as resolved.',
+      resolvedAt: new Date('2026-10-05'),
+    },
+  });
+
+  await prisma.grievance.create({
+    data: {
+      studentId: (await prisma.user.findFirstOrThrow({ where: { username: 'student2.cse' } })).id,
+      departmentId: cse.id,
+      type: 'Other',
+      details: 'The drinking water cooler on the second floor is not working.',
+      status: 'PENDING',
+    },
+  });
+  console.log('  ✓ Grievances (4)');
 
   // ── Notices ────────────────────────────────────────────────
   await prisma.notice.createMany({
