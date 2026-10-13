@@ -268,7 +268,7 @@ async function main() {
   // ── Leave requests ─────────────────────────────────────────
   await prisma.leaveRequest.create({
     data: {
-      studentId: student.id,
+      requesterId: student.id,
       classId: cls.id,
       fromDate: new Date('2026-11-01'),
       toDate: new Date('2026-11-03'),
@@ -278,7 +278,7 @@ async function main() {
   });
   await prisma.leaveRequest.create({
     data: {
-      studentId: student.id,
+      requesterId: student.id,
       classId: cls.id,
       fromDate: new Date('2026-10-15'),
       toDate: new Date('2026-10-17'),
@@ -291,7 +291,7 @@ async function main() {
   });
   await prisma.leaveRequest.create({
     data: {
-      studentId: student.id,
+      requesterId: student.id,
       classId: cls.id,
       fromDate: new Date('2026-09-10'),
       toDate: new Date('2026-09-11'),
@@ -307,7 +307,7 @@ async function main() {
   });
   await prisma.leaveRequest.create({
     data: {
-      studentId: student.id,
+      requesterId: student.id,
       classId: cls.id,
       fromDate: new Date('2026-08-20'),
       toDate: new Date('2026-08-25'),
@@ -318,7 +318,45 @@ async function main() {
       inchargeRemark: 'Too many days during term time.',
     },
   });
-  console.log('  ✓ Leave requests (4)');
+  console.log('  ✓ Leave requests — students (4)');
+
+  // Faculty leave requests
+  await prisma.leaveRequest.create({
+    data: {
+      requesterId: faculty.id,
+      fromDate: new Date('2026-11-05'),
+      toDate: new Date('2026-11-06'),
+      body: 'Attending a family wedding out of town.',
+      status: 'PENDING_HOD',
+    },
+  });
+
+  await prisma.leaveRequest.create({
+    data: {
+      requesterId: faculty2.id,
+      fromDate: new Date('2026-09-15'),
+      toDate: new Date('2026-09-16'),
+      body: 'Medical checkup.',
+      status: 'APPROVED',
+      hodId: hod.id,
+      hodAt: new Date('2026-09-10'),
+      hodRemark: 'Approved. Arrange a substitute for your classes.',
+    },
+  });
+
+  await prisma.leaveRequest.create({
+    data: {
+      requesterId: faculty.id,
+      fromDate: new Date('2026-08-01'),
+      toDate: new Date('2026-08-10'),
+      body: 'Extended vacation.',
+      status: 'REJECTED',
+      hodId: hod.id,
+      hodAt: new Date('2026-07-28'),
+      hodRemark: 'Too long during term time. Please submit a shorter request.',
+    },
+  });
+  console.log('  ✓ Leave requests — faculty (3)');
     // ── Grievances ─────────────────────────────────────────────
   await prisma.grievance.create({
     data: {

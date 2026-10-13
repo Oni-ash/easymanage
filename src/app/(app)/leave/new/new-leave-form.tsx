@@ -43,7 +43,7 @@ export default function NewLeaveForm() {
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               required
               fullWidth
             />
@@ -52,7 +52,7 @@ export default function NewLeaveForm() {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               required
               fullWidth
             />

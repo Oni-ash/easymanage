@@ -16,7 +16,7 @@ export default async function LeaveDetailPage({ params }: { params: Params }) {
   const request = await prisma.leaveRequest.findUnique({
     where: { id: requestId },
     include: {
-      student: { select: { id: true, name: true, username: true, departmentId: true } },
+      requester: { select: { id: true, name: true, username: true, role: true, departmentId: true } },
       class: { select: { id: true, name: true, inchargeId: true } },
       incharge: { select: { name: true } },
       hod: { select: { name: true } },
@@ -24,22 +24,23 @@ export default async function LeaveDetailPage({ params }: { params: Params }) {
   });
   if (!request) notFound();
 
-  // Who is viewing?
-  const isOwner = request.studentId === principal.id;
-  const isIncharge = request.class.inchargeId === principal.id;
+  const isOwner = request.requesterId === principal.id;
+  const isIncharge = request.class?.inchargeId === principal.id;
   const isHod =
     (principal.role === 'HOD' || principal.role === 'ADMIN') &&
-    principal.departmentId === request.student.departmentId;
+    principal.departmentId === request.requester.departmentId;
 
   if (!isOwner && !isIncharge && !isHod) notFound();
 
-  // What can they do right now?
-  const canActAsIncharge = isIncharge && request.status === 'PENDING';
+  const isFacultyRequest = request.requester.role === 'FACULTY';
+  const canActAsIncharge = isIncharge && !isFacultyRequest && request.status === 'PENDING';
   const canActAsHod = isHod && request.status === 'PENDING_HOD';
 
   let mode: 'incharge' | 'hod' | null = null;
   if (canActAsIncharge) mode = 'incharge';
   else if (canActAsHod) mode = 'hod';
+
+  const isFacultyIncharge = isIncharge && isFacultyRequest;
 
   return (
     <Box>
@@ -47,7 +48,8 @@ export default async function LeaveDetailPage({ params }: { params: Params }) {
         Leave request
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        {request.student.name} · {request.class.name}
+        {request.requester.name}
+        {isFacultyRequest ? ' · Faculty' : request.class ? ` · ${request.class.name}` : ''}
       </Typography>
 
       <Paper sx={{ p: 3, borderRadius: 4, mb: 3 }}>
@@ -122,6 +124,14 @@ export default async function LeaveDetailPage({ params }: { params: Params }) {
               : 'Approving finalizes this request. Rejecting ends it with your reason.'}
           </Typography>
           <DecisionForm requestId={request.id} mode={mode} />
+        </Paper>
+      )}
+
+      {isFacultyIncharge && !mode && (
+        <Paper sx={{ p: 3, borderRadius: 4, bgcolor: 'action.hover' }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            This is a faculty request. It goes directly to the HOD — no class-incharge step.
+          </Typography>
         </Paper>
       )}
     </Box>

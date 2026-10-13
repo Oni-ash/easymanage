@@ -5,7 +5,7 @@ import LinkButton from './link-button';
 
 export default async function StudentLeave({ principal }: { principal: Principal }) {
   const requests = await prisma.leaveRequest.findMany({
-    where: { studentId: principal.id },
+    where: { requesterId: principal.id },
     orderBy: { createdAt: 'desc' },
     include: {
       class: { select: { name: true } },

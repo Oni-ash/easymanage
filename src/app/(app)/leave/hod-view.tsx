@@ -21,21 +21,19 @@ export default async function HodLeave({ principal }: { principal: Principal }) 
   }
 
   const requests = await prisma.leaveRequest.findMany({
-    where: { student: { departmentId: principal.departmentId } },
-    orderBy: [{ createdAt: 'desc' }],
+    where: { requester: { departmentId: principal.departmentId } },
+    orderBy: { createdAt: 'desc' },
     include: {
-      student: { select: { name: true, username: true } },
+      requester: { select: { name: true, username: true, role: true } },
       class: { select: { name: true } },
       incharge: { select: { name: true } },
     },
   });
 
   const pending = requests.filter((r) => r.status === 'PENDING_HOD');
-  const approvedByIncharge = requests.filter(
-    (r) => r.status === 'APPROVED' || (r.status === 'REJECTED' && !!r.hodId),
-  );
-  const rejectedByIncharge = requests.filter(
-    (r) => r.status === 'REJECTED' && !r.hodId,
+  const decided = requests.filter((r) => r.status === 'APPROVED' || (r.status === 'REJECTED' && !!r.hodId));
+  const inchargeRejected = requests.filter(
+    (r) => r.status === 'REJECTED' && !r.hodId && r.requester.role === 'STUDENT',
   );
 
   return (
@@ -55,8 +53,9 @@ export default async function HodLeave({ principal }: { principal: Principal }) 
             <RequestCard
               key={r.id}
               id={r.id}
-              studentName={r.student.name}
-              className={r.class.name}
+              requesterName={r.requester.name}
+              requesterRole={r.requester.role}
+              className={r.class?.name ?? null}
               fromDate={r.fromDate}
               toDate={r.toDate}
               body={r.body}
@@ -70,15 +69,16 @@ export default async function HodLeave({ principal }: { principal: Principal }) 
       </Section>
 
       <Section title="Handled by you">
-        {approvedByIncharge.length === 0 ? (
+        {decided.length === 0 ? (
           <EmptyCard>No decisions yet.</EmptyCard>
         ) : (
-          approvedByIncharge.map((r) => (
+          decided.map((r) => (
             <RequestCard
               key={r.id}
               id={r.id}
-              studentName={r.student.name}
-              className={r.class.name}
+              requesterName={r.requester.name}
+              requesterRole={r.requester.role}
+              className={r.class?.name ?? null}
               fromDate={r.fromDate}
               toDate={r.toDate}
               body={r.body}
@@ -92,15 +92,16 @@ export default async function HodLeave({ principal }: { principal: Principal }) 
       </Section>
 
       <Section title="Rejected by class incharge">
-        {rejectedByIncharge.length === 0 ? (
+        {inchargeRejected.length === 0 ? (
           <EmptyCard>None.</EmptyCard>
         ) : (
-          rejectedByIncharge.map((r) => (
+          inchargeRejected.map((r) => (
             <RequestCard
               key={r.id}
               id={r.id}
-              studentName={r.student.name}
-              className={r.class.name}
+              requesterName={r.requester.name}
+              requesterRole={r.requester.role}
+              className={r.class?.name ?? null}
               fromDate={r.fromDate}
               toDate={r.toDate}
               body={r.body}
@@ -137,7 +138,8 @@ function EmptyCard({ children }: { children: React.ReactNode }) {
 
 function RequestCard({
   id,
-  studentName,
+  requesterName,
+  requesterRole,
   className,
   fromDate,
   toDate,
@@ -148,8 +150,9 @@ function RequestCard({
   inchargeAt,
 }: {
   id: string;
-  studentName: string;
-  className: string;
+  requesterName: string;
+  requesterRole: string;
+  className: string | null;
   fromDate: Date;
   toDate: Date;
   body: string;
@@ -170,11 +173,16 @@ function RequestCard({
           }}
         >
           <Box>
-            <Typography sx={{ fontWeight: 600 }}>
-              {studentName} · {formatDate(fromDate)} → {formatDate(toDate)}
-            </Typography>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+              <Typography sx={{ fontWeight: 600 }}>
+                {requesterName} · {formatDate(fromDate)} → {formatDate(toDate)}
+              </Typography>
+              {requesterRole !== 'STUDENT' && (
+                <Chip label={requesterRole} size="small" color="primary" variant="outlined" />
+              )}
+            </Stack>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {className}
+              {className ?? 'Faculty request'}
             </Typography>
           </Box>
           <StatusChip status={status} />
@@ -192,10 +200,7 @@ function RequestCard({
                 Class incharge: {inchargeName}
                 {inchargeAt ? ` · ${formatDate(inchargeAt)}` : ''}
               </Typography>
-              <Typography
-                variant="body2"
-                sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap' }}
-              >
+              <Typography variant="body2" sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap' }}>
                 {inchargeRemark}
               </Typography>
             </Box>

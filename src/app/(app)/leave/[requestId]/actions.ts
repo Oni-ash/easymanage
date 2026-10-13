@@ -10,7 +10,7 @@ async function loadRequestForAction(requestId: string) {
   return prisma.leaveRequest.findUnique({
     where: { id: requestId },
     include: {
-      student: { select: { id: true, name: true, departmentId: true } },
+      requester: { select: { id: true, name: true, departmentId: true, role: true } },
       class: { select: { inchargeId: true, name: true, departmentId: true } },
     },
   });
@@ -24,7 +24,10 @@ export async function approveAsIncharge(requestId: string): Promise<Result> {
 
   const request = await loadRequestForAction(requestId);
   if (!request) return { error: 'Request not found' };
-  if (request.class.inchargeId !== principal.id) {
+  if (request.requester.role !== 'STUDENT') {
+    return { error: 'This request does not go through the class incharge' };
+  }
+  if (request.class?.inchargeId !== principal.id) {
     return { error: 'You are not the class incharge for this request' };
   }
   if (request.status !== 'PENDING') {
@@ -41,18 +44,17 @@ export async function approveAsIncharge(requestId: string): Promise<Result> {
       },
     });
 
-    // Notify the HOD of the student's department
-    if (request.student.departmentId) {
+    if (request.requester.departmentId) {
       const dept = await tx.department.findUnique({
-        where: { id: request.student.departmentId },
-        select: { hodId: true, name: true },
+        where: { id: request.requester.departmentId },
+        select: { hodId: true },
       });
       if (dept?.hodId) {
         await tx.notification.create({
           data: {
             userId: dept.hodId,
             title: 'Leave request awaiting your approval',
-            body: `${request.student.name}'s leave request was approved by the class incharge.`,
+            body: `${request.requester.name}'s leave request was approved by the class incharge.`,
             link: `/leave/${requestId}`,
           },
         });
@@ -71,7 +73,10 @@ export async function rejectAsIncharge(requestId: string, reason: string): Promi
 
   const request = await loadRequestForAction(requestId);
   if (!request) return { error: 'Request not found' };
-  if (request.class.inchargeId !== principal.id) {
+  if (request.requester.role !== 'STUDENT') {
+    return { error: 'This request does not go through the class incharge' };
+  }
+  if (request.class?.inchargeId !== principal.id) {
     return { error: 'You are not the class incharge for this request' };
   }
   if (request.status !== 'PENDING') {
@@ -94,7 +99,7 @@ export async function rejectAsIncharge(requestId: string, reason: string): Promi
 
     await tx.notification.create({
       data: {
-        userId: request.student.id,
+        userId: request.requester.id,
         title: 'Leave request rejected',
         body: `Your leave request was rejected by ${principal.name}. Reason: ${reason.trim()}`,
         link: `/leave/${requestId}`,
@@ -118,7 +123,7 @@ export async function approveAsHod(requestId: string): Promise<Result> {
 
   const request = await loadRequestForAction(requestId);
   if (!request) return { error: 'Request not found' };
-  if (request.student.departmentId !== principal.departmentId) {
+  if (request.requester.departmentId !== principal.departmentId) {
     return { error: 'This request is not from your department' };
   }
   if (request.status !== 'PENDING_HOD') {
@@ -137,7 +142,7 @@ export async function approveAsHod(requestId: string): Promise<Result> {
 
     await tx.notification.create({
       data: {
-        userId: request.student.id,
+        userId: request.requester.id,
         title: 'Leave request approved',
         body: `Your leave request was approved by ${principal.name}.`,
         link: `/leave/${requestId}`,
@@ -159,7 +164,7 @@ export async function rejectAsHod(requestId: string, reason: string): Promise<Re
 
   const request = await loadRequestForAction(requestId);
   if (!request) return { error: 'Request not found' };
-  if (request.student.departmentId !== principal.departmentId) {
+  if (request.requester.departmentId !== principal.departmentId) {
     return { error: 'This request is not from your department' };
   }
   if (request.status !== 'PENDING_HOD') {
@@ -182,7 +187,7 @@ export async function rejectAsHod(requestId: string, reason: string): Promise<Re
 
     await tx.notification.create({
       data: {
-        userId: request.student.id,
+        userId: request.requester.id,
         title: 'Leave request rejected',
         body: `Your leave request was rejected by ${principal.name}. Reason: ${reason.trim()}`,
         link: `/leave/${requestId}`,

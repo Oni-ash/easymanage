@@ -6,15 +6,25 @@ import NewLeaveForm from './new-leave-form';
 export default async function NewLeavePage() {
   const principal = await getPrincipal();
   if (!principal) redirect('/login');
-  if (principal.role !== 'STUDENT') redirect('/leave');
-  if (!principal.class) {
+
+  const canSubmit = principal.role === 'STUDENT' || principal.role === 'FACULTY';
+  if (!canSubmit) redirect('/leave');
+
+  const contextLine =
+    principal.role === 'STUDENT'
+      ? principal.class
+        ? `${principal.name} · ${principal.class.name} · Semester ${principal.class.semester}`
+        : null
+      : `${principal.name} · ${principal.department?.name ?? 'Faculty'}`;
+
+  if (!contextLine) {
     return (
       <Box>
         <Typography variant="h4" color="primary" sx={{ fontWeight: 700, mb: 3 }}>
           New leave request
         </Typography>
         <Typography sx={{ color: 'text.secondary' }}>
-          You are not assigned to a class yet. Contact your department office.
+          You are not assigned to a class or department yet. Contact the office.
         </Typography>
       </Box>
     );
@@ -26,7 +36,7 @@ export default async function NewLeavePage() {
         New leave request
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        Submitting as {principal.name} · {principal.class.name} · Semester {principal.class.semester}
+        Submitting as {contextLine}
       </Typography>
       <NewLeaveForm />
     </Box>

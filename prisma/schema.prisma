@@ -110,7 +110,7 @@ model User {
   teachingAssignments TeachingAssignment[]
   attendanceTaken     AttendanceSession[]
   attendanceRecords   AttendanceRecord[]
-  leaveRequestsSent   LeaveRequest[]       @relation("LeaveStudent")
+  leaveRequestsSent   LeaveRequest[]       @relation("LeaveRequester")
   leaveRequestsOKd    LeaveRequest[]       @relation("LeaveIncharge")
   leaveRequestsFinal  LeaveRequest[]       @relation("LeaveHod")
   materialsUploaded   Material[]
@@ -235,18 +235,18 @@ model AttendanceRecord {
 // ─────────────── 2. Leave requisition ────────────────────────
 
 model LeaveRequest {
-  id        String        @id @default(cuid())
-  studentId      String
-  student        User          @relation("LeaveStudent", fields: [studentId], references: [id])
-  classId        String
-  class          Class         @relation(fields: [classId], references: [id])
+  id             String        @id @default(cuid())
+  requesterId    String
+  requester      User          @relation("LeaveRequester", fields: [requesterId], references: [id])
+  classId        String?
+  class          Class?        @relation(fields: [classId], references: [id])
   fromDate       DateTime
-  toDate    DateTime
-  body      String
-  status    RequestStatus @default(PENDING)
+  toDate         DateTime
+  body           String
+  status         RequestStatus @default(PENDING)
 
   inchargeId     String?
-  incharge       User?     @relation("LeaveIncharge", fields: [inchargeId], references: [id])
+  incharge       User?         @relation("LeaveIncharge", fields: [inchargeId], references: [id])
   inchargeAt     DateTime?
   inchargeRemark String?
 
@@ -257,7 +257,9 @@ model LeaveRequest {
 
   createdAt DateTime @default(now())
 
-  @@index([status, classId])
+  @@index([status])
+  @@index([requesterId])
+  @@index([classId])
 }
 
 // ─────────────── 3. Materials / files ────────────────────────

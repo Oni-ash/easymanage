@@ -9,8 +9,16 @@ export async function submitLeaveRequest(
 ): Promise<{ ok: true } | { error: string }> {
   const principal = await getPrincipal();
   if (!principal) return { error: 'Not signed in' };
-  if (principal.role !== 'STUDENT') return { error: 'Only students can submit leave requests' };
-  if (!principal.classId) return { error: 'You are not assigned to a class' };
+  if (principal.role !== 'STUDENT' && principal.role !== 'FACULTY') {
+    return { error: 'Only students and faculty can submit leave requests' };
+  }
+  if (!principal.departmentId) {
+    return { error: 'You are not assigned to a department' };
+  }
+
+  if (principal.role === 'STUDENT' && !principal.classId) {
+    return { error: 'You are not assigned to a class' };
+  }
 
   const fromDateStr = String(formData.get('fromDate') ?? '');
   const toDateStr = String(formData.get('toDate') ?? '');
@@ -32,14 +40,18 @@ export async function submitLeaveRequest(
     return { error: 'From date must be before or equal to the to date' };
   }
 
+  // Students: PENDING (goes to incharge first).
+  // Faculty: PENDING_HOD (goes straight to HOD).
+  const initialStatus = principal.role === 'STUDENT' ? 'PENDING' : 'PENDING_HOD';
+
   await prisma.leaveRequest.create({
     data: {
-      studentId: principal.id,
-      classId: principal.classId,
+      requesterId: principal.id,
+      classId: principal.role === 'STUDENT' ? principal.classId : null,
       fromDate,
       toDate,
       body,
-      status: 'PENDING',
+      status: initialStatus,
     },
   });
 
