@@ -11,7 +11,8 @@ export type SectionKey =
   | 'calendar'
   | 'fees'
   | 'schedule'
-  | 'results';
+  | 'results'
+  | 'users';
 
 export type Section = {
   key: SectionKey;
@@ -105,5 +106,11 @@ export const SECTIONS: Section[] = [
       isAdmin(p) ||
       isAccounts(p) ||
       (isFaculty(p) && (p.permissions as string[]).includes('FEE')),
+  },
+  {
+    key: 'users',
+    label: 'Users',
+    href: '/users',
+    visible: (p) => isAdmin(p) || isFaculty(p),
   },
 ];

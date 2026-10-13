@@ -50,6 +50,17 @@ async function main() {
     data: { name: 'Electronics', code: 'ECE' },
   });
   console.log('  ✓ Departments');
+    // ── Admin ──────────────────────────────────────────────────
+  const admin = await prisma.user.create({
+    data: {
+      username: 'admin',
+      email: 'admin@college.edu',
+      name: 'System Admin',
+      role: Role.ADMIN,
+      passwordHash: hash('password'),
+    },
+  });
+  console.log('  ✓ Admin');
 
   // ── HOD ────────────────────────────────────────────────────
   const hod = await prisma.user.create({
@@ -566,6 +577,7 @@ async function main() {
   console.log('  student.cse    → Student, CSE-3A');
   console.log('  student2.cse   → Student, CSE-3B');
   console.log('  accounts       → Accounts, college-wide');
+  console.log('  admin          → Admin, full access');
 }
 
 main()

@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@mui/material';
 
+import GroupIcon from '@mui/icons-material/Group';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -53,6 +54,7 @@ const ICONS: Record<SectionKey, React.ElementType> = {
   fees: PaymentsIcon,
   schedule: TableChartIcon,
   results: GradeIcon,
+  users: GroupIcon,
 };
 
 export default function Shell({
