@@ -119,6 +119,7 @@ model User {
   grievancesAssigned  Grievance[]          @relation("GrievanceAssignee")
   appointmentsAsked   AppointmentRequest[] @relation("ApptStudent")
   appointmentsMet     AppointmentRequest[] @relation("ApptStaff")
+  availabilitySlots   AvailabilitySlot[]   @relation("SlotOwner")
   eventsCreated       CalendarEvent[]
   feeRecord           FeeRecord?
   feeTransactions     FeeTransaction[]
@@ -340,6 +341,9 @@ model AppointmentRequest {
   rejectionReason String?
   createdAt       DateTime          @default(now())
 
+  slotId          String?  @unique
+  slot            AvailabilitySlot? @relation(fields: [slotId], references: [id])
+
   @@index([staffId, status])
 }
 
@@ -518,4 +522,18 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+model AvailabilitySlot {
+  id        String    @id @default(cuid())
+  staffId   String
+  staff     User      @relation("SlotOwner", fields: [staffId], references: [id])
+  startAt   DateTime
+  endAt     DateTime
+  location  String?
+  isBooked  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  appointment AppointmentRequest?
+
+  @@index([staffId, startAt])
 }

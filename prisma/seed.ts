@@ -357,6 +357,63 @@ async function main() {
     },
   });
   console.log('  ✓ Leave requests — faculty (3)');
+    // ── Availability slots ─────────────────────────────────────
+  // Give Dr. Rao slots this week
+  const now = new Date();
+  const baseDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+
+  function slotAt(dayOffset: number, hourUTC: number, durationMin: number) {
+    const start = new Date(baseDate);
+    start.setUTCDate(baseDate.getUTCDate() + dayOffset);
+    start.setUTCHours(hourUTC, 0, 0, 0);
+    const end = new Date(start);
+    end.setUTCMinutes(end.getUTCMinutes() + durationMin);
+    return { startAt: start, endAt: end };
+  }
+
+  const hodSlots = [
+    { ...slotAt(1, 10, 30), location: 'Cabin B-201' },
+    { ...slotAt(1, 14, 30), location: 'Cabin B-201' },
+    { ...slotAt(2, 11, 30), location: 'Cabin B-201' },
+    { ...slotAt(3, 15, 30), location: 'Cabin B-201' },
+    { ...slotAt(5, 9, 30), location: 'Cabin B-201' },
+  ];
+
+  for (const s of hodSlots) {
+    await prisma.availabilitySlot.create({
+      data: {
+        staffId: hod.id,
+        startAt: s.startAt,
+        endAt: s.endAt,
+        location: s.location,
+      },
+    });
+  }
+  console.log(`  ✓ Availability slots (${hodSlots.length} for Dr. Rao)`);
+
+  // One pending appointment request from the student
+  const firstSlot = await prisma.availabilitySlot.findFirst({
+    where: { staffId: hod.id },
+    orderBy: { startAt: 'asc' },
+  });
+  if (firstSlot) {
+    await prisma.availabilitySlot.update({
+      where: { id: firstSlot.id },
+      data: { isBooked: true },
+    });
+    await prisma.appointmentRequest.create({
+      data: {
+        studentId: student.id,
+        staffId: hod.id,
+        slotId: firstSlot.id,
+        reason:
+          'Would like to discuss my semester project direction and possible research areas.',
+        status: 'PENDING',
+        preferredAt: firstSlot.startAt,
+      },
+    });
+  }
+  console.log('  ✓ Appointment request (1 pending)');
     // ── Grievances ─────────────────────────────────────────────
   await prisma.grievance.create({
     data: {
