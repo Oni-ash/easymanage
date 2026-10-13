@@ -61,6 +61,27 @@ async function main() {
     },
   });
   console.log('  ✓ Admin');
+    // ── COE staff (college-wide, no department) ────────────────
+  const coe = await prisma.user.create({
+    data: {
+      username: 'coe',
+      email: 'coe@college.edu',
+      name: 'Dr. Menon',
+      role: Role.COE,
+      passwordHash: hash('password'),
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      username: 'coe.staff',
+      email: 'coe.staff@college.edu',
+      name: 'Anita R',
+      role: Role.COE_STAFF,
+      passwordHash: hash('password'),
+    },
+  });
+  console.log('  ✓ COE + COE staff');
 
   // ── HOD ────────────────────────────────────────────────────
   const hod = await prisma.user.create({
@@ -663,6 +684,29 @@ async function main() {
     }
   }
   console.log('  ✓ Attendance history (10 days)');
+    // ── Sample exams (no marks yet) ────────────────────────────
+  await prisma.exam.create({
+    data: {
+      name: 'Mid-Semester Exam — October 2026',
+      kind: 'INTERNAL',
+      session: '2026-27 Odd',
+      departmentId: cse.id,
+      semester: 5,
+      createdById: hod.id,
+    },
+  });
+
+  await prisma.exam.create({
+    data: {
+      name: 'End Semester Exam — Nov 2026',
+      kind: 'END_SEMESTER',
+      session: '2026-27 Odd',
+      departmentId: null,
+      semester: 5,
+      createdById: coe.id,
+    },
+  });
+  console.log('  ✓ Exams (1 internal + 1 end-semester)');
 
   console.log('\nDone.\n');
   console.log('Logins (all passwords are "password"):');
@@ -673,6 +717,8 @@ async function main() {
   console.log('  student2.cse   → Student, CSE-3B');
   console.log('  accounts       → Accounts, college-wide');
   console.log('  admin          → Admin, full access');
+  console.log('  coe            → Controller of Examinations');
+  console.log('  coe.staff      → COE cell staff');
 }
 
 main()

@@ -19,7 +19,14 @@ enum Role {
   FACULTY
   HOD
   ACCOUNTS
+  COE
+  COE_STAFF
   ADMIN
+}
+
+enum ExamKind {
+  INTERNAL
+  END_SEMESTER
 }
 
 enum Permission {
@@ -127,6 +134,8 @@ model User {
   scheduleEdited      ScheduleSlot[]       @relation("SlotEditor")
   examMarksEntered    ExamMark[]           @relation("MarkEnteredBy")
   examMarksReceived   ExamMark[]           @relation("MarkStudent")
+  examsCreated        Exam[]               @relation("ExamCreator")
+  examsPublished      Exam[]               @relation("ExamPublisher")
   markRevisions       MarkRevision[]
   notifications       Notification[]
   auditEntries        AuditLog[]
@@ -416,14 +425,24 @@ model ScheduleSlot {
 // ─────────────── 10. Exam results ────────────────────────────
 
 model Exam {
-  id           String     @id @default(cuid())
-  name         String
-  departmentId String
-  department   Department @relation(fields: [departmentId], references: [id])
-  semester     Int
-  publishedAt  DateTime?
+  id            String    @id @default(cuid())
+  name          String
+  kind          ExamKind  @default(INTERNAL)
+  session       String?
+  departmentId  String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  semester      Int
+  publishedAt   DateTime?
+  publishedById String?
+  publishedBy   User?     @relation("ExamPublisher", fields: [publishedById], references: [id])
+  createdById   String?
+  createdBy     User?     @relation("ExamCreator", fields: [createdById], references: [id])
+  createdAt     DateTime  @default(now())
 
   marks ExamMark[]
+
+  @@index([departmentId, semester])
+  @@index([kind])
 }
 
 model ExamMark {
