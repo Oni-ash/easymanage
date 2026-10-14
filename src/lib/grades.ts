@@ -36,3 +36,20 @@ export function computeGrade(
 
   return { total, maxTotal, percentage, grade, passed };
 }
+export function gradePoint(grade: string): number {
+  switch (grade) {
+    case 'O':  return 10;
+    case 'A+': return 9;
+    case 'A':  return 8;
+    case 'B+': return 7;
+    case 'B':  return 6;
+    case 'C':  return 5;
+    default:   return 0; // F
+  }
+}
+
+export function computeGpa(gradePoints: number[]): number {
+  if (gradePoints.length === 0) return 0;
+  const sum = gradePoints.reduce((a, b) => a + b, 0);
+  return Math.round((sum / gradePoints.length) * 100) / 100;
+}

@@ -724,7 +724,7 @@ async function main() {
     },
   });
 
-  await prisma.exam.create({
+  const endSemExam = await prisma.exam.create({
     data: {
       name: 'End Semester Exam — Nov 2026',
       kind: 'END_SEMESTER',
@@ -732,12 +732,14 @@ async function main() {
       departmentId: null,
       semester: 5,
       createdById: coe.id,
+      // Publish this one immediately for the transcript demo
+      publishedAt: new Date('2026-11-25'),
+      publishedById: coe.id,
     },
   });
-  console.log('  ✓ Exams (1 internal + 1 end-semester)');
+  console.log('  ✓ Exams (1 internal + 1 published end-semester)');
 
-  // Sample marks for the internal exam (CSE-3A only, both subjects)
-  // Asha K: DS 76+8 (pass), DBMS 62 (pass)
+  // ── Internal exam marks (CSE-3A only) ──────────────────────
   await prisma.examMark.create({
     data: {
       examId: internalExam.id,
@@ -764,7 +766,70 @@ async function main() {
       enteredById: faculty.id,
     },
   });
-  console.log('  ✓ Exam marks (2 for Asha K)');
+  console.log('  ✓ Internal marks (2 for Asha K)');
+
+  // ── End-sem marks for Asha K (CSE-3A) ──────────────────────
+  // CS501: pass with strong grade
+  await prisma.examMark.create({
+    data: {
+      examId: endSemExam.id,
+      studentId: student.id,
+      subjectId: ds.id,
+      theoryMarks: 72,
+      practicalMarks: 9,
+      maxTheory: 90,
+      maxPractical: 10,
+      grade: 'A',
+      enteredById: coe.id,
+    },
+  });
+  // CS502: fail (below 45)
+  await prisma.examMark.create({
+    data: {
+      examId: endSemExam.id,
+      studentId: student.id,
+      subjectId: dbms.id,
+      theoryMarks: 38,
+      practicalMarks: null,
+      maxTheory: 100,
+      maxPractical: 0,
+      grade: 'F',
+      enteredById: coe.id,
+    },
+  });
+  console.log('  ✓ End-sem marks (2 for Asha K — 1 pass, 1 backlog)');
+
+  // ── End-sem marks for Rahul M (CSE-3B) — both pass ─────────
+  const student2 = await prisma.user.findFirstOrThrow({
+    where: { username: 'student2.cse' },
+  });
+  await prisma.examMark.create({
+    data: {
+      examId: endSemExam.id,
+      studentId: student2.id,
+      subjectId: ds.id,
+      theoryMarks: 80,
+      practicalMarks: 9,
+      maxTheory: 90,
+      maxPractical: 10,
+      grade: 'A+',
+      enteredById: coe.id,
+    },
+  });
+  await prisma.examMark.create({
+    data: {
+      examId: endSemExam.id,
+      studentId: student2.id,
+      subjectId: dbms.id,
+      theoryMarks: 68,
+      practicalMarks: null,
+      maxTheory: 100,
+      maxPractical: 0,
+      grade: 'B+',
+      enteredById: coe.id,
+    },
+  });
+  console.log('  ✓ End-sem marks (2 for Rahul M)');
 
   console.log('\nDone.\n');
   console.log('Logins (all passwords are "password"):');

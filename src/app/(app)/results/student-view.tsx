@@ -43,12 +43,26 @@ export default async function StudentResults({ principal }: { principal: Princip
 
   return (
     <Box>
-      <Typography variant="h4" color="primary" sx={{ fontWeight: 700, mb: 1 }}>
-        My results
-      </Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        {principal.class.name} · Semester {principal.class.semester}
-      </Typography>
+      <Stack
+        direction="row"
+        sx={{ alignItems: 'flex-start', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}
+      >
+        <Box>
+          <Typography variant="h4" color="primary" sx={{ fontWeight: 700, mb: 1 }}>
+            My results
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            {principal.class.name} · Semester {principal.class.semester}
+          </Typography>
+        </Box>
+        <LinkButton
+          href="/results/transcript"
+          variant="outlined"
+          sx={{ borderRadius: 999, px: 3 }}
+        >
+          View transcript
+        </LinkButton>
+      </Stack>
 
       <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
         Published results
