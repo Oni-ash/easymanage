@@ -17,10 +17,10 @@ export default async function StudentReportPage({ params }: { params: Params }) 
     where: { id: examId },
     include: { department: { select: { code: true, name: true } } },
   });
-  if (!exam || exam.kind !== 'INTERNAL') notFound();
+  if (!exam) notFound();
   if (!exam.publishedAt) notFound();
-  if (exam.departmentId !== principal.departmentId) notFound();
-
+  if (exam.kind === 'INTERNAL' && exam.departmentId !== principal.departmentId) notFound();
+  if (exam.kind === 'END_SEMESTER' && exam.semester !== principal.class?.semester) notFound();
   const marks = await prisma.examMark.findMany({
     where: { examId, studentId: principal.id },
     include: {

@@ -30,6 +30,7 @@ export default function EntryForm({
   hasPractical,
   students,
   initial,
+  readOnly = false,
 }: {
   examId: string;
   subjectId: string;
@@ -37,6 +38,7 @@ export default function EntryForm({
   hasPractical: boolean;
   students: Student[];
   initial: Record<string, Row>;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<Record<string, Row>>(() => {
@@ -183,6 +185,7 @@ export default function EntryForm({
                       size="small"
                       value={r.theory}
                       onChange={(e) => update(s.id, 'theory', e.target.value)}
+                      disabled={readOnly}
                       slotProps={{
                         htmlInput: {
                           min: 0,
@@ -201,6 +204,7 @@ export default function EntryForm({
                         size="small"
                         value={r.practical}
                         onChange={(e) => update(s.id, 'practical', e.target.value)}
+                        disabled={readOnly}
                         slotProps={{
                           htmlInput: {
                             min: 0,
@@ -244,14 +248,16 @@ export default function EntryForm({
         <Button onClick={() => router.push('/results')} disabled={submitting}>
           Back
         </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={submitting}
-          sx={{ borderRadius: 999, px: 4 }}
-        >
-          {submitting ? 'Saving…' : 'Save marks'}
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={submitting}
+            sx={{ borderRadius: 999, px: 4 }}
+          >
+            {submitting ? 'Saving…' : 'Save marks'}
+          </Button>
+        )}
       </Stack>
     </Stack>
   );

@@ -22,9 +22,8 @@ export async function saveMarks(input: {
 }): Promise<Result> {
   const principal = await getPrincipal();
   if (!principal) return { error: 'Not signed in' };
-  if (principal.role !== 'FACULTY') return { error: 'Only faculty can enter marks' };
 
-  const [exam, subject, teaches] = await Promise.all([
+  const [exam, subject] = await Promise.all([
     prisma.exam.findUnique({
       where: { id: input.examId },
       select: { id: true, kind: true, publishedAt: true, semester: true },
@@ -33,22 +32,37 @@ export async function saveMarks(input: {
       where: { id: input.subjectId },
       select: { id: true, hasPractical: true },
     }),
-    prisma.teachingAssignment.findFirst({
+  ]);
+
+  if (!exam) return { error: 'Exam not found' };
+  if (exam.publishedAt) return { error: 'Exam is already published — cannot edit marks' };
+  if (!subject) return { error: 'Subject not found' };
+
+  // Authorization based on exam kind
+  if (exam.kind === 'INTERNAL') {
+    if (principal.role !== 'FACULTY') {
+      return { error: 'Only faculty can enter internal marks' };
+    }
+    const teaches = await prisma.teachingAssignment.findFirst({
       where: {
         facultyId: principal.id,
         subjectId: input.subjectId,
         classId: input.classId,
       },
-    }),
-  ]);
+    });
+    if (!teaches) return { error: 'You do not teach this subject to this class' };
+  } else if (exam.kind === 'END_SEMESTER') {
+    if (
+      principal.role !== 'COE' &&
+      principal.role !== 'COE_STAFF' &&
+      principal.role !== 'ADMIN'
+    ) {
+      return { error: 'Only COE staff can enter end-semester marks' };
+    }
+  } else {
+    return { error: 'Unknown exam kind' };
+  }
 
-  if (!exam) return { error: 'Exam not found' };
-  if (exam.kind !== 'INTERNAL') return { error: 'This exam is not editable by faculty' };
-  if (exam.publishedAt) return { error: 'Exam is already published — cannot edit marks' };
-  if (!subject) return { error: 'Subject not found' };
-  if (!teaches) return { error: 'You do not teach this subject to this class' };
-
-  // Validate each entry
   const maxTheory = subject.hasPractical ? 90 : 100;
   const maxPractical = subject.hasPractical ? 10 : 0;
 
@@ -67,11 +81,7 @@ export async function saveMarks(input: {
 
   await prisma.$transaction(async (tx) => {
     for (const e of input.entries) {
-      const grade = computeGrade(
-        e.theoryMarks,
-        e.practicalMarks,
-        subject.hasPractical,
-      ).grade;
+      const grade = computeGrade(e.theoryMarks, e.practicalMarks, subject.hasPractical).grade;
 
       const existing = await tx.examMark.findUnique({
         where: {
@@ -85,7 +95,6 @@ export async function saveMarks(input: {
       });
 
       if (existing) {
-        // Record a revision if marks actually changed
         const theoryChanged = existing.theoryMarks !== e.theoryMarks;
         const practicalChanged = existing.practicalMarks !== e.practicalMarks;
         if (theoryChanged || practicalChanged) {
@@ -95,7 +104,10 @@ export async function saveMarks(input: {
               oldMarks: (existing.theoryMarks ?? 0) + (existing.practicalMarks ?? 0),
               newMarks: (e.theoryMarks ?? 0) + (e.practicalMarks ?? 0),
               changedById: principal.id,
-              reason: 'Faculty edit before publish',
+              reason:
+                exam.kind === 'INTERNAL'
+                  ? 'Faculty edit before publish'
+                  : 'COE edit before publish',
             },
           });
         }
@@ -105,8 +117,8 @@ export async function saveMarks(input: {
           data: {
             theoryMarks: e.theoryMarks,
             practicalMarks: e.practicalMarks,
-            maxTheory: subject.hasPractical ? 90 : 100,
-            maxPractical: subject.hasPractical ? 10 : 0,
+            maxTheory,
+            maxPractical,
             grade,
             enteredById: principal.id,
           },
@@ -119,8 +131,8 @@ export async function saveMarks(input: {
             subjectId: input.subjectId,
             theoryMarks: e.theoryMarks,
             practicalMarks: e.practicalMarks,
-            maxTheory: subject.hasPractical ? 90 : 100,
-            maxPractical: subject.hasPractical ? 10 : 0,
+            maxTheory,
+            maxPractical,
             grade,
             enteredById: principal.id,
           },

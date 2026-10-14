@@ -22,9 +22,11 @@ export default async function StudentResults({ principal }: { principal: Princip
 
   const exams = await prisma.exam.findMany({
     where: {
-      kind: 'INTERNAL',
-      departmentId: principal.departmentId,
       semester: principal.class.semester,
+      OR: [
+        { kind: 'INTERNAL', departmentId: principal.departmentId },
+        { kind: 'END_SEMESTER' },
+      ],
     },
     orderBy: { createdAt: 'desc' },
     include: {

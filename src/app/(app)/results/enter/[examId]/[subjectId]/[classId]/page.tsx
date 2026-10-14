@@ -9,7 +9,6 @@ type Params = Promise<{ examId: string; subjectId: string; classId: string }>;
 export default async function MarkEntryPage({ params }: { params: Params }) {
   const principal = await getPrincipal();
   if (!principal) redirect('/login');
-  if (principal.role !== 'FACULTY') redirect('/results');
 
   const { examId, subjectId, classId } = await params;
 
@@ -31,19 +30,29 @@ export default async function MarkEntryPage({ params }: { params: Params }) {
   ]);
 
   if (!exam || !subject || !cls) notFound();
-  if (exam.kind !== 'INTERNAL') notFound();
   if (exam.semester !== cls.semester) notFound();
+
+  const isFaculty = principal.role === 'FACULTY';
+  const isCoe = principal.role === 'COE' || principal.role === 'COE_STAFF';
+  const isAdmin = principal.role === 'ADMIN';
+
+  // Authorization depends on exam kind
+  if (exam.kind === 'INTERNAL') {
+    if (!isFaculty) notFound();
+    const teaches = await prisma.teachingAssignment.findFirst({
+      where: { facultyId: principal.id, subjectId, classId },
+    });
+    if (!teaches) notFound();
+  } else if (exam.kind === 'END_SEMESTER') {
+    if (!isCoe && !isAdmin) notFound();
+  } else {
+    notFound();
+  }
 
   const marks = await prisma.examMark.findMany({
     where: { examId, subjectId, studentId: { in: students.map((s) => s.id) } },
     select: { studentId: true, theoryMarks: true, practicalMarks: true },
   });
-
-  // Verify the principal teaches this subject to this class
-  const teaches = await prisma.teachingAssignment.findFirst({
-    where: { facultyId: principal.id, subjectId, classId },
-  });
-  if (!teaches) notFound();
 
   const initial: Record<string, { theory: string; practical: string }> = {};
   for (const m of marks) {
@@ -53,6 +62,8 @@ export default async function MarkEntryPage({ params }: { params: Params }) {
     };
   }
 
+  const isPublished = !!exam.publishedAt;
+
   return (
     <Box>
       <Typography variant="h4" color="primary" sx={{ fontWeight: 700, mb: 1 }}>
@@ -60,6 +71,7 @@ export default async function MarkEntryPage({ params }: { params: Params }) {
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
         {exam.name} · {subject.code} · {cls.name}
+        {isPublished ? ' · Published (read-only)' : ''}
       </Typography>
       <EntryForm
         examId={examId}
@@ -68,6 +80,7 @@ export default async function MarkEntryPage({ params }: { params: Params }) {
         hasPractical={subject.hasPractical}
         students={students}
         initial={initial}
+        readOnly={isPublished}
       />
     </Box>
   );
