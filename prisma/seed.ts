@@ -194,7 +194,13 @@ async function main() {
 
   // ── Subjects ───────────────────────────────────────────────
   const ds = await prisma.subject.create({
-    data: { code: 'CS501', name: 'Data Structures', semester: 5, departmentId: cse.id },
+    data: {
+      code: 'CS501',
+      name: 'Data Structures',
+      semester: 5,
+      departmentId: cse.id,
+      hasPractical: true,
+    },
   });
   const dbms = await prisma.subject.create({
     data: { code: 'CS502', name: 'DBMS', semester: 5, departmentId: cse.id },
@@ -706,7 +712,59 @@ async function main() {
       createdById: coe.id,
     },
   });
+  // Capture exam references
+  const internalExam = await prisma.exam.create({
+    data: {
+      name: 'Mid-Semester Exam — October 2026',
+      kind: 'INTERNAL',
+      session: '2026-27 Odd',
+      departmentId: cse.id,
+      semester: 5,
+      createdById: hod.id,
+    },
+  });
+
+  await prisma.exam.create({
+    data: {
+      name: 'End Semester Exam — Nov 2026',
+      kind: 'END_SEMESTER',
+      session: '2026-27 Odd',
+      departmentId: null,
+      semester: 5,
+      createdById: coe.id,
+    },
+  });
   console.log('  ✓ Exams (1 internal + 1 end-semester)');
+
+  // Sample marks for the internal exam (CSE-3A only, both subjects)
+  // Asha K: DS 76+8 (pass), DBMS 62 (pass)
+  await prisma.examMark.create({
+    data: {
+      examId: internalExam.id,
+      studentId: student.id,
+      subjectId: ds.id,
+      theoryMarks: 76,
+      practicalMarks: 8,
+      maxTheory: 90,
+      maxPractical: 10,
+      grade: 'A',
+      enteredById: faculty.id,
+    },
+  });
+  await prisma.examMark.create({
+    data: {
+      examId: internalExam.id,
+      studentId: student.id,
+      subjectId: dbms.id,
+      theoryMarks: 62,
+      practicalMarks: null,
+      maxTheory: 100,
+      maxPractical: 0,
+      grade: 'B+',
+      enteredById: faculty.id,
+    },
+  });
+  console.log('  ✓ Exam marks (2 for Asha K)');
 
   console.log('\nDone.\n');
   console.log('Logins (all passwords are "password"):');

@@ -189,6 +189,7 @@ model Subject {
   semester     Int
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
+  hasPractical Boolean @default(false)
 
   offerings TeachingAssignment[]
   sessions  AttendanceSession[]
@@ -446,23 +447,26 @@ model Exam {
 }
 
 model ExamMark {
-  id            String   @id @default(cuid())
-  examId        String
-  exam          Exam     @relation(fields: [examId], references: [id])
-  studentId     String
-  student       User     @relation("MarkStudent", fields: [studentId], references: [id])
-  subjectId     String
-  subject       Subject  @relation(fields: [subjectId], references: [id])
-  marksObtained Int?
-  maxMarks      Int
-  grade         String?
-  enteredById   String
-  enteredBy     User     @relation("MarkEnteredBy", fields: [enteredById], references: [id])
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  examId         String
+  exam           Exam     @relation(fields: [examId], references: [id])
+  studentId      String
+  student        User     @relation("MarkStudent", fields: [studentId], references: [id])
+  subjectId      String
+  subject        Subject  @relation(fields: [subjectId], references: [id])
+  theoryMarks    Int?
+  practicalMarks Int?
+  maxTheory      Int      @default(90)
+  maxPractical   Int      @default(10)
+  grade          String?
+  enteredById    String
+  enteredBy      User     @relation("MarkEnteredBy", fields: [enteredById], references: [id])
+  updatedAt      DateTime @updatedAt
 
   revisions MarkRevision[]
 
   @@unique([examId, studentId, subjectId])
+  @@index([studentId])
 }
 
 model MarkRevision {
