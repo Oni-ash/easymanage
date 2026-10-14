@@ -1,20 +1,119 @@
-import { Box, Paper, Typography } from '@mui/material';
+import { Box, Chip, Paper, Stack, Typography } from '@mui/material';
+import { prisma } from '@/lib/db';
 import type { Principal } from '@/lib/principal';
+import LinkButton from './link-button';
+import { formatDate } from '@/lib/dates';
 
 export default async function StudentResults({ principal }: { principal: Principal }) {
+  if (!principal.departmentId || !principal.class) {
+    return (
+      <Box>
+        <Typography variant="h4" color="primary" sx={{ fontWeight: 700, mb: 3 }}>
+          My results
+        </Typography>
+        <Paper sx={{ p: 3, borderRadius: 4 }}>
+          <Typography sx={{ color: 'text.secondary' }}>
+            You are not assigned to a class yet.
+          </Typography>
+        </Paper>
+      </Box>
+    );
+  }
+
+  const exams = await prisma.exam.findMany({
+    where: {
+      kind: 'INTERNAL',
+      departmentId: principal.departmentId,
+      semester: principal.class.semester,
+    },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: {
+          marks: { where: { studentId: principal.id } },
+        },
+      },
+    },
+  });
+
+  const published = exams.filter((e) => e.publishedAt);
+  const pending = exams.filter((e) => !e.publishedAt);
+
   return (
     <Box>
       <Typography variant="h4" color="primary" sx={{ fontWeight: 700, mb: 1 }}>
         My results
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        {principal.name} · {principal.class?.name ?? 'No class'}
+        {principal.class.name} · Semester {principal.class.semester}
       </Typography>
-      <Paper sx={{ p: 4, borderRadius: 4 }}>
-        <Typography sx={{ color: 'text.secondary' }}>
-          Your exam results, transcript, and backlog status will appear here.
-        </Typography>
-      </Paper>
+
+      <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+        Published results
+      </Typography>
+      {published.length === 0 ? (
+        <Paper sx={{ p: 3, borderRadius: 4, mb: 4 }}>
+          <Typography sx={{ color: 'text.secondary' }}>
+            No published results yet.
+          </Typography>
+        </Paper>
+      ) : (
+        <Stack spacing={1.5} sx={{ mb: 4 }}>
+          {published.map((exam) => (
+            <Paper key={exam.id} sx={{ p: 2.5, borderRadius: 3 }}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                sx={{
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 600 }}>{exam.name}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {exam.session ?? ''} · Published {formatDate(exam.publishedAt!)}
+                  </Typography>
+                </Box>
+                <LinkButton
+                  href={`/results/report/${exam.id}`}
+                  variant="contained"
+                  sx={{ borderRadius: 999, px: 3 }}
+                >
+                  View report
+                </LinkButton>
+              </Stack>
+            </Paper>
+          ))}
+        </Stack>
+      )}
+
+      {pending.length > 0 && (
+        <>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            Pending
+          </Typography>
+          <Stack spacing={1.5}>
+            {pending.map((exam) => (
+              <Paper key={exam.id} sx={{ p: 2.5, borderRadius: 3 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <Box>
+                    <Typography sx={{ fontWeight: 600 }}>{exam.name}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {exam.session ?? ''}
+                    </Typography>
+                  </Box>
+                  <Chip label="Awaiting publication" variant="outlined" size="small" />
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        </>
+      )}
     </Box>
   );
 }
