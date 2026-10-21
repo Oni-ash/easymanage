@@ -8,7 +8,7 @@ export default async function SetupHomePage() {
   if (!principal) redirect('/login');
   if (principal.role !== 'HOD' && principal.role !== 'ADMIN') redirect('/dashboard');
 
-  const canManageAll = principal.role === 'ADMIN';
+  const isAdmin = principal.role === 'ADMIN';
 
   return (
     <Box>
@@ -16,48 +16,71 @@ export default async function SetupHomePage() {
         Academic setup
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        {canManageAll
-          ? 'Manage subjects and teaching assignments across the college'
-          : `Manage subjects and teaching assignments for ${principal.department?.name ?? 'your department'}`}
+        {isAdmin
+          ? 'Manage the entire academic structure across the college'
+          : `Manage structure for ${principal.department?.name ?? 'your department'}`}
       </Typography>
 
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={2}
-        sx={{ alignItems: 'stretch' }}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+          gap: 2,
+        }}
       >
-        <Paper sx={{ p: 3, borderRadius: 4, flex: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-            Subjects
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            Add and retire subjects per semester. Mark subjects that have a lab.
-          </Typography>
-          <LinkButton
-            href="/setup/subjects"
-            variant="contained"
-            sx={{ borderRadius: 999, px: 3 }}
-          >
-            Manage subjects
-          </LinkButton>
-        </Paper>
-
-        <Paper sx={{ p: 3, borderRadius: 4, flex: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-            Teaching assignments
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            Assign faculty to teach a subject to a class.
-          </Typography>
-          <LinkButton
-            href="/setup/assignments"
-            variant="contained"
-            sx={{ borderRadius: 999, px: 3 }}
-          >
-            Manage assignments
-          </LinkButton>
-        </Paper>
-      </Stack>
+        <SetupCard
+          title="Subjects"
+          description="Add and retire subjects per semester. Mark subjects that have a lab."
+          href="/setup/subjects"
+        />
+        <SetupCard
+          title="Teaching assignments"
+          description="Assign faculty to teach a subject to a class."
+          href="/setup/assignments"
+        />
+        <SetupCard
+          title="Classes"
+          description="Create classes, assign their incharge, and set the semester."
+          href="/setup/classes"
+        />
+        {isAdmin && (
+          <SetupCard
+            title="Departments"
+            description="Create departments and assign their HOD."
+            href="/setup/departments"
+          />
+        )}
+      </Box>
     </Box>
+  );
+}
+
+function SetupCard({
+  title,
+  description,
+  href,
+}: {
+  title: string;
+  description: string;
+  href: string;
+}) {
+  return (
+    <Paper sx={{ p: 3, borderRadius: 4, display: 'flex', flexDirection: 'column' }}>
+      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+        {title}
+      </Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, flexGrow: 1 }}>
+        {description}
+      </Typography>
+      <Box>
+        <LinkButton
+          href={href}
+          variant="contained"
+          sx={{ borderRadius: 999, px: 3 }}
+        >
+          Manage
+        </LinkButton>
+      </Box>
+    </Paper>
   );
 }
