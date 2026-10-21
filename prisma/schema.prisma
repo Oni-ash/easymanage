@@ -190,6 +190,7 @@ model Subject {
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
   hasPractical Boolean @default(false)
+  active       Boolean @default(true)
 
   offerings TeachingAssignment[]
   sessions  AttendanceSession[]

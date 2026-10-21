@@ -37,6 +37,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import GradeIcon from '@mui/icons-material/Grade';
+import SchoolIcon from '@mui/icons-material/School';
 
 import { SECTIONS, type SectionKey } from '@/lib/sections';
 import type { Principal } from '@/lib/principal';
@@ -55,6 +56,7 @@ const ICONS: Record<SectionKey, React.ElementType> = {
   schedule: TableChartIcon,
   results: GradeIcon,
   users: GroupIcon,
+  setup: SchoolIcon,
 };
 
 export default function Shell({
